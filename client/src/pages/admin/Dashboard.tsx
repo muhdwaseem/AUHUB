@@ -12,7 +12,7 @@ import { money, grams, num, pct, shortDate } from "../../format";
 function Tile({ area, className = "", children }: { area: string; className?: string; children: ReactNode }) {
   return (
     <section
-      className={`glass a-${area} flex min-w-0 flex-col rounded-[20px] border border-graphite-200 bg-ink-800 p-[18px] ${className}`}
+      className={`glass a-${area} flex min-w-0 flex-col rounded-[20px] border border-graphite-200 bg-ink-800 p-3.5 sm:p-[18px] ${className}`}
     >
       <div className="relative z-[1] flex min-w-0 flex-1 flex-col">{children}</div>
     </section>
@@ -345,7 +345,7 @@ export default function Dashboard() {
             <span className="glass-thin hidden items-center gap-2 rounded-full border border-graphite-200 bg-ink-800 px-3.5 py-2 text-[12.5px] text-graphite-500 xl:flex">
               <Search size={14} /> Search trades, investors
             </span>
-            <span className="glass-thin flex items-center gap-2 rounded-full border border-graphite-200 bg-ink-800 px-3.5 py-[7px]">
+            <span className="glass-thin hidden items-center gap-2 rounded-full border border-graphite-200 bg-ink-800 px-3.5 py-[7px] sm:flex">
               <span className="h-2 w-2 rounded-full bg-gold-500 shadow-[0_0_0_4px_var(--color-glow)]" />
               <b className="font-mono text-[13px] font-semibold text-gold-500">{money(o.avgSellRate)}</b>
               <span className="text-[11px] text-graphite-500">/g avg sell</span>
@@ -367,7 +367,7 @@ export default function Dashboard() {
       />
 
       {shareOff && (
-        <div className="glass-thin mb-4 flex flex-wrap items-center gap-3 rounded-full border border-warning/30 bg-warning/[0.11] px-5 py-2.5 text-[13px] text-graphite-700">
+        <div className="glass-thin mb-4 flex flex-wrap items-center gap-3 rounded-2xl border border-warning/30 bg-warning/[0.11] px-4 py-2.5 text-[13px] text-graphite-700 sm:rounded-full sm:px-5">
           <AlertTriangle size={16} className="flex-none text-warning" />
           <span>
             Active investor shares total{" "}

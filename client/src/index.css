@@ -192,6 +192,17 @@ body {
     padding: 12px;
   }
 }
+@media (max-width: 640px) {
+  body {
+    padding: 0;
+  }
+  /* 16px kills iOS Safari's zoom-on-focus for form fields */
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}
 
 /* ── wallpaper: soft light sources for the glass to pick up ── */
 .wall {
@@ -331,6 +342,7 @@ body {
 }
 @media (max-width: 680px) {
   .bento {
+    gap: 10px;
     grid-template-columns: minmax(0, 1fr);
     grid-template-areas: "gauge" "kpi" "bars" "map" "inv" "trades" "trend" "exp";
   }

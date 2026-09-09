@@ -139,7 +139,7 @@ export default function PortalDashboard() {
 
       {/* Daily statement */}
       <Card title="Daily statement" className="mt-6">
-        <div className="flex flex-wrap items-end gap-3 border-b border-ink-700 p-4">
+        <div className="flex flex-col items-stretch gap-3 border-b border-ink-700 p-4 sm:flex-row sm:flex-wrap sm:items-end">
           <Field label="From">
             <Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
           </Field>

@@ -51,7 +51,7 @@ export function AppShell({ nav, children }: { nav: NavItem[]; children: ReactNod
     <>
       <div className="wall" aria-hidden />
       <div className="grain" aria-hidden />
-      <div className="mx-auto grid min-h-[calc(100vh-44px)] max-w-[1520px] grid-cols-[56px_minmax(0,1fr)] overflow-hidden rounded-[22px] border border-graphite-100 bg-ink-950 shadow-[var(--edge),0_44px_96px_-44px_rgba(0,0,0,.7)] sm:grid-cols-[76px_minmax(0,1fr)] sm:rounded-[26px]">
+      <div className="mx-auto grid min-h-dvh w-full max-w-[1520px] grid-cols-[56px_minmax(0,1fr)] overflow-hidden border-graphite-100 bg-ink-950 sm:min-h-[calc(100vh-44px)] sm:grid-cols-[76px_minmax(0,1fr)] sm:rounded-[26px] sm:border sm:shadow-[var(--edge),0_44px_96px_-44px_rgba(0,0,0,.7)]">
       {/* ── icon rail ── */}
       <aside className="glass relative z-[3] flex flex-col items-center gap-1.5 border-r border-graphite-100 bg-ink-800 py-4 [box-shadow:inset_1px_0_0_var(--sheen)] sm:py-5">
         <div
@@ -67,7 +67,7 @@ export function AppShell({ nav, children }: { nav: NavItem[]; children: ReactNod
               to={item.to}
               end={item.end}
               className={({ isActive }) =>
-                `group relative grid h-10 w-10 place-items-center rounded-full border border-transparent transition-[transform,background-color,color,box-shadow] duration-150 ease-out active:scale-90 sm:h-11 sm:w-11 ${
+                `group relative grid h-11 w-11 place-items-center rounded-full border border-transparent transition-[transform,background-color,color,box-shadow] duration-150 ease-out active:scale-90 ${
                   isActive
                     ? `${goldSurface} text-chrome-950 shadow-[0_6px_18px_-6px_var(--color-glow)]`
                     : "text-graphite-500 hover:bg-ink-900 hover:text-graphite-900"
@@ -87,7 +87,7 @@ export function AppShell({ nav, children }: { nav: NavItem[]; children: ReactNod
           <button
             onClick={toggleTheme}
             aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
-            className="group relative grid h-10 w-10 place-items-center rounded-full text-graphite-500 transition-[transform,background-color,color] duration-150 ease-out active:scale-90 hover:bg-ink-900 hover:text-graphite-900 sm:h-11 sm:w-11"
+            className="group relative grid h-11 w-11 place-items-center rounded-full text-graphite-500 transition-[transform,background-color,color] duration-150 ease-out active:scale-90 hover:bg-ink-900 hover:text-graphite-900"
           >
             {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
             <span className="pointer-events-none absolute left-[52px] top-1/2 z-20 -translate-y-1/2 scale-95 whitespace-nowrap rounded-lg border border-graphite-200 px-2.5 py-1.5 text-[11px] font-semibold uppercase tracking-[0.06em] text-graphite-900 opacity-0 transition-all [background:color-mix(in_srgb,var(--wall)_88%,transparent)] [backdrop-filter:blur(8px)] group-hover:scale-100 group-hover:opacity-100">
@@ -97,7 +97,7 @@ export function AppShell({ nav, children }: { nav: NavItem[]; children: ReactNod
           <button
             onClick={() => setPwOpen(true)}
             aria-label="Change password"
-            className="group relative grid h-10 w-10 place-items-center rounded-full text-graphite-500 transition-[transform,background-color,color] duration-150 ease-out active:scale-90 hover:bg-ink-900 hover:text-graphite-900 sm:h-11 sm:w-11"
+            className="group relative grid h-11 w-11 place-items-center rounded-full text-graphite-500 transition-[transform,background-color,color] duration-150 ease-out active:scale-90 hover:bg-ink-900 hover:text-graphite-900"
           >
             <KeyRound size={18} />
             <span className="pointer-events-none absolute left-[52px] top-1/2 z-20 -translate-y-1/2 scale-95 whitespace-nowrap rounded-lg border border-graphite-200 px-2.5 py-1.5 text-[11px] font-semibold uppercase tracking-[0.06em] text-graphite-900 opacity-0 transition-all [background:color-mix(in_srgb,var(--wall)_88%,transparent)] [backdrop-filter:blur(8px)] group-hover:scale-100 group-hover:opacity-100">
@@ -110,7 +110,7 @@ export function AppShell({ nav, children }: { nav: NavItem[]; children: ReactNod
               navigate("/login");
             }}
             aria-label="Sign out"
-            className="group relative grid h-10 w-10 place-items-center rounded-full text-graphite-500 transition-[transform,background-color,color] duration-150 ease-out active:scale-90 hover:bg-ink-900 hover:text-negative sm:h-11 sm:w-11"
+            className="group relative grid h-11 w-11 place-items-center rounded-full text-graphite-500 transition-[transform,background-color,color] duration-150 ease-out active:scale-90 hover:bg-ink-900 hover:text-negative"
           >
             <LogOut size={18} />
             <span className="pointer-events-none absolute left-[52px] top-1/2 z-20 -translate-y-1/2 scale-95 whitespace-nowrap rounded-lg border border-graphite-200 px-2.5 py-1.5 text-[11px] font-semibold uppercase tracking-[0.06em] text-graphite-900 opacity-0 transition-all [background:color-mix(in_srgb,var(--wall)_88%,transparent)] [backdrop-filter:blur(8px)] group-hover:scale-100 group-hover:opacity-100">
@@ -127,7 +127,7 @@ export function AppShell({ nav, children }: { nav: NavItem[]; children: ReactNod
       </aside>
 
       {/* ── board ── */}
-      <div key={location.pathname} className="board-in min-w-0 px-4 py-5 sm:px-6 sm:py-6">
+      <div key={location.pathname} className="board-in min-w-0 px-4 py-4 sm:px-6 sm:py-6">
         {children}
       </div>
       </div>
@@ -146,9 +146,9 @@ export function PageHeader({
   action?: ReactNode;
 }) {
   return (
-    <div className="mb-4 flex flex-wrap items-center justify-between gap-3.5">
-      <div>
-        <h1 className="m-0 font-serif text-2xl font-semibold -tracking-[0.02em] text-graphite-900 sm:text-[26px]">
+    <div className="mb-4 flex flex-wrap items-center justify-between gap-x-3.5 gap-y-3">
+      <div className="min-w-0">
+        <h1 className="m-0 font-serif text-[22px] font-semibold -tracking-[0.02em] text-graphite-900 sm:text-[26px]">
           {title}
         </h1>
         {subtitle && (
@@ -157,7 +157,11 @@ export function PageHeader({
           </p>
         )}
       </div>
-      {action && <div className="flex flex-wrap items-center gap-2.5">{action}</div>}
+      {action && (
+        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:gap-2.5">
+          {action}
+        </div>
+      )}
     </div>
   );
 }
