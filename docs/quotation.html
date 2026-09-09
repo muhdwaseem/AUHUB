@@ -1,0 +1,351 @@
+<title>AU Hub Quotation</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,500&family=Work+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#f7f6f2;
+    --canvas:#eae7de;
+    --ink:#1c1e22;
+    --ink-soft:#5b6068;
+    --ink-faint:#8b8f94;
+    --line:#ddd9cd;
+    --gold:#96731d;
+    --gold-deep:#6b5314;
+    --gold-tint:#f1e6c7;
+    --band:#16181c;
+    --band-line:#3a3d33;
+  }
+
+  *{box-sizing:border-box;}
+  body{
+    background:var(--canvas);
+    color:var(--ink);
+    font-family:'Work Sans',-apple-system,'Segoe UI',sans-serif;
+    padding:48px 20px 80px;
+  }
+  h1,h2,h3{font-family:'Fraunces',Georgia,'Times New Roman',serif;text-wrap:balance;margin:0;}
+  .mono{font-family:'IBM Plex Mono','SFMono-Regular',Consolas,monospace;font-variant-numeric:tabular-nums;}
+
+  .sheet{
+    max-width:760px;
+    margin:0 auto;
+    background:var(--paper);
+    border:1px solid var(--line);
+    box-shadow:0 1px 2px rgba(28,30,34,.04), 0 18px 40px -24px rgba(28,30,34,.35);
+    padding:56px 60px 48px;
+    position:relative;
+  }
+
+  .print-btn{
+    position:fixed;
+    top:22px;
+    right:22px;
+    font-family:'Work Sans',sans-serif;
+    font-size:13px;
+    font-weight:600;
+    color:var(--paper);
+    background:var(--ink);
+    border:none;
+    border-radius:6px;
+    padding:9px 16px;
+    cursor:pointer;
+    letter-spacing:.01em;
+  }
+  .print-btn:hover{background:var(--gold-deep);}
+  .print-btn:focus-visible{outline:2px solid var(--gold);outline-offset:2px;}
+
+  /* ---- letterhead ---- */
+  .eyebrow{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11.5px;
+    letter-spacing:.16em;
+    color:var(--gold-deep);
+    font-weight:600;
+  }
+  .letterhead{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    gap:24px;
+    padding-bottom:22px;
+    border-bottom:1px solid var(--line);
+  }
+  .letterhead h1{font-size:26px;font-weight:600;color:var(--ink);}
+  .doc-meta{
+    text-align:right;
+    font-size:12.5px;
+    color:var(--ink-soft);
+    line-height:1.7;
+    white-space:nowrap;
+  }
+  .doc-meta b{color:var(--ink);font-weight:600;}
+
+  /* ---- from/to ---- */
+  .parties{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:24px;
+    margin:26px 0 30px;
+  }
+  .party-label{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:10.5px;
+    letter-spacing:.14em;
+    color:var(--ink-faint);
+    margin-bottom:6px;
+  }
+  .party-name{font-weight:600;font-size:15px;}
+  .party-sub{font-size:13px;color:var(--ink-soft);margin-top:2px;}
+  .placeholder{color:var(--ink-faint);font-style:italic;}
+
+  /* ---- project block ---- */
+  .project h2{font-size:21px;font-weight:600;margin-bottom:8px;}
+  .project p{font-size:14.5px;color:var(--ink-soft);line-height:1.65;max-width:56ch;margin:0;}
+
+  section{margin-top:34px;}
+  .section-label{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:10.5px;
+    letter-spacing:.14em;
+    color:var(--gold-deep);
+    font-weight:600;
+    margin-bottom:14px;
+  }
+
+  /* ---- scope list ---- */
+  .scope-row{
+    display:grid;
+    grid-template-columns:190px 1fr;
+    gap:18px;
+    padding:13px 0;
+    border-top:1px solid var(--line);
+    font-size:13.8px;
+    line-height:1.55;
+  }
+  .scope-row:last-child{border-bottom:1px solid var(--line);}
+  .scope-mod{font-weight:600;color:var(--ink);}
+  .scope-detail{color:var(--ink-soft);}
+
+  .excluded{
+    font-size:13px;
+    color:var(--ink-soft);
+    line-height:1.7;
+    padding-left:18px;
+    margin:0;
+  }
+  .excluded li::marker{color:var(--ink-faint);}
+
+  /* ---- total band ---- */
+  .total-band{
+    background:var(--band);
+    color:var(--paper);
+    padding:26px 32px;
+    display:flex;
+    justify-content:space-between;
+    align-items:baseline;
+    gap:20px;
+    flex-wrap:wrap;
+  }
+  .total-caption{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11px;
+    letter-spacing:.14em;
+    color:#c9c4b4;
+  }
+  .total-line{display:flex;flex-direction:column;gap:6px;}
+  .total-amount{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:34px;
+    font-weight:600;
+    color:var(--gold-tint);
+    line-height:1;
+  }
+  .total-terms{
+    text-align:right;
+    font-size:12.5px;
+    color:#c9c4b4;
+    line-height:1.6;
+  }
+  .total-terms b{color:var(--gold-tint);font-weight:600;}
+
+  /* ---- add-ons ---- */
+  .addons{
+    border:1px dashed var(--line);
+    border-radius:2px;
+    padding:16px 20px;
+  }
+  .addon-row{
+    display:flex;
+    justify-content:space-between;
+    gap:16px;
+    font-size:13.5px;
+    padding:8px 0;
+  }
+  .addon-row + .addon-row{border-top:1px dashed var(--line);}
+  .addon-name{color:var(--ink);}
+  .addon-price{color:var(--ink-soft);}
+  .addon-price.mono{font-size:13px;}
+
+  /* ---- terms ---- */
+  ol.terms{
+    margin:0;
+    padding-left:20px;
+    font-size:12.5px;
+    color:var(--ink-soft);
+    line-height:1.75;
+  }
+  ol.terms li{padding-left:2px;}
+  ol.terms b{color:var(--ink);}
+
+  /* ---- footer ---- */
+  footer{
+    margin-top:40px;
+    padding-top:22px;
+    border-top:1px solid var(--line);
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-end;
+    gap:20px;
+    flex-wrap:wrap;
+  }
+  footer .thanks{font-family:'Fraunces',serif;font-style:italic;font-size:15px;color:var(--ink-soft);}
+  footer .signoff{text-align:right;font-size:12.5px;color:var(--ink-soft);line-height:1.6;}
+  footer .signoff b{color:var(--ink);font-weight:600;display:block;font-size:13.5px;}
+
+  @media (max-width:640px){
+    .sheet{padding:36px 22px 32px;}
+    .letterhead{flex-direction:column;}
+    .doc-meta{text-align:left;}
+    .parties{grid-template-columns:1fr;}
+    .scope-row{grid-template-columns:1fr;gap:4px;}
+    .total-band{flex-direction:column;}
+    .total-terms{text-align:left;}
+  }
+
+  @media print{
+    body{background:#fff;padding:0;}
+    .sheet{box-shadow:none;border:none;max-width:100%;padding:0 8mm;}
+    .print-btn{display:none;}
+    .total-band{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  }
+</style>
+
+<button class="print-btn" onclick="window.print()">Print / Save as PDF</button>
+
+<div class="sheet">
+
+  <div class="letterhead">
+    <div>
+      <div class="eyebrow">QUOTATION</div>
+      <h1>Waseem</h1>
+    </div>
+    <div class="doc-meta">
+      No. <b class="mono">AUHUB-Q-2026-001</b><br>
+      Date <b>04 September 2026</b><br>
+      Valid until <b>04 October 2026</b>
+    </div>
+  </div>
+
+  <div class="parties">
+    <div>
+      <div class="party-label">FROM</div>
+      <div class="party-name">Waseem</div>
+      <div class="party-sub">techagentzservice@gmail.com</div>
+    </div>
+    <div>
+      <div class="party-label">TO</div>
+      <div class="party-name">Taswiq Media</div>
+      <div class="party-sub placeholder">Contact person · phone / email</div>
+    </div>
+  </div>
+
+  <div class="project">
+    <h2>AU Hub — Gold Trading CRM</h2>
+    <p>A custom-built system for managing investor accounts, expenses, gold
+      trade records, and automated profit &amp; loss with per-investor profit
+      sharing.</p>
+  </div>
+
+  <section>
+    <div class="section-label">SCOPE OF WORK DELIVERED</div>
+    <div class="scope-row">
+      <div class="scope-mod">Investor Management</div>
+      <div class="scope-detail">Add, edit, deactivate, or remove investors; each gets an auto-generated username &amp; password on creation.</div>
+    </div>
+    <div class="scope-row">
+      <div class="scope-mod">Investor Portal</div>
+      <div class="scope-detail">Secure read-only login per investor — sees only their own profit share, never another investor's, while every loss stays visible to all.</div>
+    </div>
+    <div class="scope-row">
+      <div class="scope-mod">Expense Tracking</div>
+      <div class="scope-detail">Built-in headers (Flight, Travel, Visa, Hotel) plus unlimited custom headers; payment slips / invoices attach as image or PDF.</div>
+    </div>
+    <div class="scope-row">
+      <div class="scope-mod">Expense Attribution</div>
+      <div class="scope-detail">Any expense can be tagged to an investor, or charged directly against that investor's share alone.</div>
+    </div>
+    <div class="scope-row">
+      <div class="scope-mod">Gold Trade Ledger</div>
+      <div class="scope-detail">Purchases and sales recorded by quality/purity, weight, and rate per gram.</div>
+    </div>
+    <div class="scope-row">
+      <div class="scope-mod">Profit &amp; Loss Engine</div>
+      <div class="scope-detail">Automatic daily and overall accounts — stock on hand, gross profit, net profit after expenses, total loss, net loss.</div>
+    </div>
+    <div class="scope-row">
+      <div class="scope-mod">Profit Split by %</div>
+      <div class="scope-detail">Profit and loss divided across investors automatically by their agreed percentage share.</div>
+    </div>
+    <div class="scope-row">
+      <div class="scope-mod">Dashboard &amp; Reports</div>
+      <div class="scope-detail">Profit trend chart, expense breakdown, investor split table, CSV export.</div>
+    </div>
+    <div class="scope-row">
+      <div class="scope-mod">Responsive &amp; Secure</div>
+      <div class="scope-detail">Works on desktop, tablet and phone; role-based login with encrypted passwords and session authentication.</div>
+    </div>
+    <div class="scope-row">
+      <div class="scope-mod">Hosting Setup</div>
+      <div class="scope-detail">Deployed live on a basic hosting plan (limited resources) so the system is reachable online.</div>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-label">NOT INCLUDED IN THIS PRICE</div>
+    <ul class="excluded">
+      <li>Domain name registration — client's own cost</li>
+      <li>Ongoing maintenance, support, or new feature requests after handover</li>
+    </ul>
+  </section>
+
+  <section class="total-band">
+    <div class="total-line">
+      <div class="total-caption">TOTAL — ONE-TIME PAYMENT</div>
+      <div class="total-amount">AED 2,500.00</div>
+    </div>
+    <div class="total-terms">
+      <b>100%</b> due on delivery / handover<br>
+      System is built and running — handover on receipt of payment
+    </div>
+  </section>
+
+  <section>
+    <div class="section-label">TERMS</div>
+    <ol class="terms">
+      <li>This quotation is valid for <b>30 days</b> from the date above.</li>
+      <li>Price covers the system as built and demonstrated; scope changes beyond the modules listed may be quoted separately.</li>
+      <li>Hosting setup is on a basic/limited plan to get the system live; a domain name is not included and is purchased separately by the client.</li>
+      <li>No ongoing support is included in this price. Any changes, fixes, or new features requested <b>after handover</b> will be quoted and charged separately at that time.</li>
+    </ol>
+  </section>
+
+  <footer>
+    <div class="thanks">Thank you for the opportunity to build your system.</div>
+    <div class="signoff">
+      <b>Waseem</b>
+      techagentzservice@gmail.com
+    </div>
+  </footer>
+
+</div>

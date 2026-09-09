@@ -1,0 +1,104 @@
+// CRMgold data model
+// Provider is SQLite for zero-config local running. To move to Postgres later,
+// change provider to "postgresql" and DATABASE_URL, then run `prisma migrate dev`.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+/// Login accounts. One ADMIN (seeded) plus one auto-created account per investor.
+model User {
+  id         String    @id @default(cuid())
+  username   String    @unique
+  password   String // bcrypt hash
+  role       String    @default("INVESTOR") // ADMIN | INVESTOR
+  status     String    @default("ACTIVE") // ACTIVE | INVALID  (admin can invalidate an investor login)
+  investor   Investor? @relation(fields: [investorId], references: [id], onDelete: Cascade)
+  investorId String?   @unique
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+}
+
+/// A person who has invested capital and receives a percentage share of profit.
+model Investor {
+  id              String   @id @default(cuid())
+  name            String
+  email           String?
+  phone           String?
+  sharePercentage Float    @default(0) // 0 - 100
+  capitalInvested Float    @default(0) // informational
+  status          String   @default("ACTIVE") // ACTIVE | INACTIVE
+  notes           String?
+  joinedAt        DateTime @default(now())
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user     User?
+  expenses Expense[]
+
+  /// Plaintext of the most recently generated password, kept so the admin can
+  /// re-share credentials. Cleared once the admin marks it as delivered.
+  generatedUsername String?
+  generatedPassword String?
+}
+
+/// Expense headers. "Flight", "Total Travel", "Visa", "Hotel Bookings" are seeded;
+/// admin can add / rename / delete their own headers.
+model ExpenseCategory {
+  id        String    @id @default(cuid())
+  name      String    @unique
+  isDefault Boolean   @default(false)
+  createdAt DateTime  @default(now())
+  expenses  Expense[]
+}
+
+model Expense {
+  id          String              @id @default(cuid())
+  category    ExpenseCategory     @relation(fields: [categoryId], references: [id])
+  categoryId  String
+  amount      Float
+  date        DateTime
+  description String?
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+  attachments ExpenseAttachment[]
+
+  /// Optional investor this expense relates to.
+  investor   Investor? @relation(fields: [investorId], references: [id], onDelete: SetNull)
+  investorId String?
+  /// When true (and investorId set) this expense is deducted from that
+  /// investor's profit share only, not from the shared pool.
+  chargedToInvestor Boolean @default(false)
+}
+
+/// Payment slip / invoice / receipt attached to an expense (image or PDF).
+model ExpenseAttachment {
+  id           String   @id @default(cuid())
+  expense      Expense  @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+  expenseId    String
+  filename     String // stored filename on disk
+  originalName String
+  mimeType     String
+  size         Int
+  createdAt    DateTime @default(now())
+}
+
+/// A single gold purchase (BUY) or sale (SELL). "quality" is the purity grade.
+model GoldTransaction {
+  id            String   @id @default(cuid())
+  type          String // BUY | SELL
+  date          DateTime
+  quality       String // e.g. "24K", "22K", "999", "916"
+  quantityGrams Float
+  ratePerGram   Float
+  totalAmount   Float // quantityGrams * ratePerGram (stored for reporting)
+  counterparty  String? // supplier / buyer name
+  notes         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}

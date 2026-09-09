@@ -1,0 +1,337 @@
+@import "tailwindcss";
+
+/* ─────────────────────────────────────────────────────────────
+   AU Hub — liquid-glass bento desk
+   Frosted glass tiles over a blob-lit wallpaper. Gold is the only accent.
+   Token NAMES stay stable (ink-* / graphite-* / gold-* / semantic) so
+   every shared component keeps working; the ink-* surfaces are now
+   translucent white so they refract the wallpaper behind them.
+   ───────────────────────────────────────────────────────────── */
+
+@theme {
+  --color-chrome-950: #241b0c;
+  --color-chrome-900: #1a1817;
+  --color-chrome-800: #262321;
+  --color-chrome-700: #383330;
+  --color-chrome-600: #4a433d;
+
+  /* gold ramp — dark defaults; overridden per theme below */
+  --color-gold-50: #fbf5e6;
+  --color-gold-100: #f6e6c6;
+  --color-gold-200: #f0d29b;
+  --color-gold-300: #f6dca6;
+  --color-gold-400: #f0c877;
+  --color-gold-500: #e9a83c;
+  --color-gold-600: #a9752a;
+  --color-gold-700: #86591e;
+  --color-gold-800: #6f491f;
+  --color-gold-900: #5f3e1e;
+
+  /* glass surfaces (translucent white) — dark defaults */
+  --color-ink-950: rgba(255, 255, 255, 0.035); /* shell bezel */
+  --color-ink-900: rgba(255, 255, 255, 0.055); /* inner pills / inputs */
+  --color-ink-800: rgba(255, 255, 255, 0.085); /* tile face */
+  --color-ink-700: rgba(255, 255, 255, 0.11);  /* raised chips / tracks */
+  --color-ink-600: rgba(255, 255, 255, 0.15);  /* borders */
+
+  /* graphite — warm ink, dark defaults (light on dark) */
+  --color-graphite-50: rgba(255, 255, 255, 0.05);
+  --color-graphite-100: rgba(255, 255, 255, 0.09);
+  --color-graphite-200: rgba(255, 255, 255, 0.15);
+  --color-graphite-300: #4a433d;
+  --color-graphite-400: #625b53;
+  --color-graphite-500: #8d8377;
+  --color-graphite-600: #a79c8e;
+  --color-graphite-700: #c3b8a9;
+  --color-graphite-800: #ddd4c6;
+  --color-graphite-900: #f4eee4;
+
+  --color-positive: #7cc79a;
+  --color-negative: #de7a64;
+  --color-warning: #e9a83c;
+  --color-accent-text: #e9a83c;
+
+  --color-gold-hi: #f6dca6;
+  --color-gold-lo: #a9752a;
+  --color-glow: rgba(233, 168, 60, 0.22);
+  --color-canvas: #0e0a06;
+
+  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-serif: "Outfit", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "IBM Plex Mono", "SFMono-Regular", ui-monospace, Menlo, monospace;
+}
+
+:root {
+  color-scheme: dark;
+  --wall: #0e0a06;
+  --blob-a: rgba(226, 142, 28, 0.72);
+  --blob-b: rgba(255, 209, 124, 0.4);
+  --blob-c: rgba(26, 88, 112, 0.62);
+  --blob-d: rgba(158, 74, 16, 0.6);
+  --blob-e: rgba(96, 52, 120, 0.26);
+  --sheen: rgba(255, 255, 255, 0.16);
+  --edge: inset 0 1px 0 rgba(255, 255, 255, 0.2), inset 0 -1px 0 rgba(255, 255, 255, 0.05);
+  --drop: 0 22px 44px -24px rgba(0, 0, 0, 0.75);
+  --halo: rgba(10, 8, 5, 0.72);
+  --scrim: rgba(10, 7, 4, 0.3);
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+  --wall: #0e0a06;
+  --blob-a: rgba(226, 142, 28, 0.72);
+  --blob-b: rgba(255, 209, 124, 0.4);
+  --blob-c: rgba(26, 88, 112, 0.62);
+  --blob-d: rgba(158, 74, 16, 0.6);
+  --blob-e: rgba(96, 52, 120, 0.26);
+  --sheen: rgba(255, 255, 255, 0.16);
+  --edge: inset 0 1px 0 rgba(255, 255, 255, 0.2), inset 0 -1px 0 rgba(255, 255, 255, 0.05);
+  --drop: 0 22px 44px -24px rgba(0, 0, 0, 0.75);
+  --halo: rgba(10, 8, 5, 0.72);
+  --scrim: rgba(10, 7, 4, 0.3);
+
+  --color-canvas: #0e0a06;
+  --color-gold-hi: #f6dca6;
+  --color-gold-lo: #a9752a;
+  --color-glow: rgba(233, 168, 60, 0.22);
+  --color-gold-300: #f6dca6;
+  --color-gold-400: #f0c877;
+  --color-gold-500: #e9a83c;
+  --color-gold-600: #a9752a;
+
+  --color-ink-950: rgba(255, 255, 255, 0.035);
+  --color-ink-900: rgba(255, 255, 255, 0.055);
+  --color-ink-800: rgba(255, 255, 255, 0.085);
+  --color-ink-700: rgba(255, 255, 255, 0.11);
+  --color-ink-600: rgba(255, 255, 255, 0.15);
+
+  --color-graphite-50: rgba(255, 255, 255, 0.05);
+  --color-graphite-100: rgba(255, 255, 255, 0.09);
+  --color-graphite-200: rgba(255, 255, 255, 0.15);
+  --color-graphite-300: #4a433d;
+  --color-graphite-400: #625b53;
+  --color-graphite-500: #8d8377;
+  --color-graphite-600: #a79c8e;
+  --color-graphite-700: #c3b8a9;
+  --color-graphite-800: #ddd4c6;
+  --color-graphite-900: #f4eee4;
+
+  --color-positive: #7cc79a;
+  --color-negative: #de7a64;
+  --color-warning: #e9a83c;
+  --color-accent-text: #e9a83c;
+}
+
+[data-theme="light"] {
+  color-scheme: light;
+  --wall: #ede3d5;
+  --blob-a: rgba(238, 178, 80, 0.66);
+  --blob-b: rgba(255, 255, 255, 0.9);
+  --blob-c: rgba(138, 190, 212, 0.62);
+  --blob-d: rgba(226, 182, 128, 0.72);
+  --blob-e: rgba(196, 168, 214, 0.34);
+  --sheen: rgba(255, 255, 255, 0.55);
+  --edge: inset 0 1px 0 rgba(255, 255, 255, 0.85), inset 0 -1px 0 rgba(120, 95, 60, 0.07);
+  --drop: 0 20px 40px -24px rgba(90, 66, 30, 0.4);
+  --halo: rgba(255, 255, 255, 0.85);
+  --scrim: rgba(255, 252, 246, 0.22);
+
+  --color-canvas: #ede3d5;
+  --color-gold-hi: #8a6114;
+  --color-gold-lo: #dcbe7e;
+  --color-glow: rgba(176, 124, 30, 0.14);
+  --color-gold-300: #e7d2a0;
+  --color-gold-400: #c89a3e;
+  --color-gold-500: #b07c1e;
+  --color-gold-600: #8a6114;
+
+  --color-ink-950: rgba(255, 255, 255, 0.24);
+  --color-ink-900: rgba(255, 255, 255, 0.42);
+  --color-ink-800: rgba(255, 255, 255, 0.56);
+  --color-ink-700: rgba(255, 255, 255, 0.78);
+  --color-ink-600: rgba(255, 255, 255, 0.7);
+
+  --color-graphite-50: rgba(255, 255, 255, 0.5);
+  --color-graphite-100: rgba(90, 70, 40, 0.1);
+  --color-graphite-200: rgba(90, 70, 40, 0.16);
+  --color-graphite-300: #cabfad;
+  --color-graphite-400: #a79d8f;
+  --color-graphite-500: #7a7165;
+  --color-graphite-600: #625a4e;
+  --color-graphite-700: #4c443a;
+  --color-graphite-800: #322c24;
+  --color-graphite-900: #1e1a15;
+
+  --color-positive: #2e7c50;
+  --color-negative: #b14330;
+  --color-warning: #96690f;
+  --color-accent-text: #b07c1e;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  padding: 22px;
+  min-height: 100vh;
+  background: var(--wall);
+  color: var(--color-graphite-900);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+@media (max-width: 900px) {
+  body {
+    padding: 12px;
+  }
+}
+
+/* ── wallpaper: soft light sources for the glass to pick up ── */
+.wall {
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg, var(--scrim), var(--scrim)),
+    radial-gradient(62% 58% at 10% 6%, var(--blob-a) 0%, transparent 72%),
+    radial-gradient(58% 54% at 92% 2%, var(--blob-b) 0%, transparent 70%),
+    radial-gradient(72% 66% at 96% 72%, var(--blob-c) 0%, transparent 74%),
+    radial-gradient(66% 60% at 14% 96%, var(--blob-d) 0%, transparent 72%),
+    radial-gradient(48% 44% at 52% 46%, var(--blob-e) 0%, transparent 70%),
+    var(--wall);
+  transition: background 0.3s ease;
+}
+.grain {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0.16;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/><feColorMatrix type='saturate' values='0'/></filter><rect width='160' height='160' filter='url(%23n)' opacity='.42'/></svg>");
+}
+
+/* ── the glass material ── */
+.glass {
+  position: relative;
+  -webkit-backdrop-filter: blur(30px) saturate(180%);
+  backdrop-filter: blur(30px) saturate(180%);
+  box-shadow: var(--edge), var(--drop);
+}
+.glass::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0.7;
+  background: linear-gradient(155deg, var(--sheen) 0%, transparent 32%);
+}
+.glass-thin {
+  -webkit-backdrop-filter: blur(16px) saturate(165%);
+  backdrop-filter: blur(16px) saturate(165%);
+  box-shadow: inset 0 1px 0 var(--sheen);
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .glass,
+  .glass-thin {
+    background: color-mix(in srgb, var(--wall) 74%, var(--color-graphite-900) 7%);
+  }
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-gold-500);
+  outline-offset: 3px;
+  border-radius: 8px;
+}
+
+.tnum {
+  font-variant-numeric: tabular-nums;
+  font-family: var(--font-mono);
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+}
+
+/* ── motion ── */
+@keyframes overlay-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes panel-in {
+  from { opacity: 0; transform: translateY(10px) scale(0.985); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes board-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+.board-in {
+  animation: board-in 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ── bento grid (dashboard) ── */
+.bento {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  grid-template-areas:
+    "gauge gauge gauge kpi   kpi    kpi    kpi    map    map    map    map    map"
+    "gauge gauge gauge bars  bars   bars   bars   map    map    map    map    map"
+    "inv   inv   inv   inv   trades trades trades trades trades trades trades trades"
+    "trend trend trend trend trend  trend  trend  trend  exp    exp    exp    exp";
+}
+.a-gauge { grid-area: gauge; }
+.a-kpi { grid-area: kpi; }
+.a-map { grid-area: map; }
+.a-bars { grid-area: bars; }
+.a-inv { grid-area: inv; }
+.a-trades { grid-area: trades; }
+.a-exp { grid-area: exp; }
+.a-trend { grid-area: trend; }
+
+@media (max-width: 1180px) {
+  .bento {
+    grid-template-areas:
+      "gauge gauge gauge gauge kpi kpi kpi kpi kpi kpi kpi kpi"
+      "gauge gauge gauge gauge bars bars bars bars bars bars bars bars"
+      "map   map   map   map   map map map map map map map map"
+      "inv   inv   inv   inv   inv trades trades trades trades trades trades trades"
+      "trend trend trend trend trend trend trend trend exp exp exp exp";
+  }
+}
+@media (max-width: 900px) {
+  .bento {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    grid-template-areas:
+      "gauge gauge gauge kpi kpi kpi"
+      "bars  bars  bars  bars bars bars"
+      "map   map   map   map map map"
+      "inv   inv   inv   trades trades trades"
+      "trend trend trend trend trend trend"
+      "exp   exp   exp   exp exp exp";
+  }
+}
+@media (max-width: 680px) {
+  .bento {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: "gauge" "kpi" "bars" "map" "inv" "trades" "trend" "exp";
+  }
+}

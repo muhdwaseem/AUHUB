@@ -1,0 +1,36 @@
+node_modules/
+dist/
+build/
+
+# env
+.env
+.env.local
+*.local
+
+# database
+server/prisma/*.db
+server/prisma/*.db-journal
+server/prisma/dev.db*
+
+# uploads (payment slips / invoices)
+server/uploads/*
+!server/uploads/.gitkeep
+
+# logs
+*.log
+npm-debug.log*
+logs/
+
+# editor / OS
+.DS_Store
+.vscode/
+.idea/
+
+# scratch / session screenshots (not project files)
+canwenotmakeshadow.png
+noshadow.png
+lookhowshadowisshowing.png
+thisisthecurrent.png
+
+# gstack local tooling state
+.gstack/
