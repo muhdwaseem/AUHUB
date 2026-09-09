@@ -113,6 +113,10 @@ The domain itself is bought separately (~$10–15/yr, any registrar).
   under a **Pro** plan ($20/mo), ideally on the client's own Vercel account.
 - **Cold start:** the first request after a few minutes idle takes ~1–2 s (Prisma
   spin-up). Fine for an internal desk tool.
+- **Region:** `vercel.json` pins the function to `syd1` (Sydney) to sit next to
+  the Supabase `ap-southeast-2` database — cross-region query round-trips were the
+  main source of slow page loads. If you move the database, change `regions`
+  to match (Hobby allows one region).
 - **Supabase free tier pauses** a project after ~1 week of no activity — the first
   request after that wakes it (a few seconds). A paid Supabase plan removes this.
 - **File access:** `/api/files/:id` checks you're logged in, then 302-redirects to
