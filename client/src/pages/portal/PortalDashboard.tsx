@@ -1,5 +1,6 @@
 import { useMemo, useState, type ReactNode } from "react";
-import { Lock } from "lucide-react";
+import { Link, useParams } from "react-router-dom";
+import { Lock, Eye, ArrowLeft } from "lucide-react";
 import { useFetch } from "../../useApi";
 import type { PortalSummary } from "../../types";
 import { PageHeader } from "../../components/AppShell";
@@ -7,15 +8,20 @@ import { Card, ErrorNote, Spinner, Badge, Field, Input, Button, GaugeRing } from
 import { money, grams, pct, shortDate } from "../../format";
 
 export default function PortalDashboard() {
+  // When rendered at /admin/view/:investorId this is set → admin preview mode.
+  const { investorId } = useParams();
+  const preview = Boolean(investorId);
+
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const qs = useMemo(() => {
     const p = new URLSearchParams();
+    if (investorId) p.set("investorId", investorId);
     if (from) p.set("from", from);
     if (to) p.set("to", to);
     const s = p.toString();
     return s ? `?${s}` : "";
-  }, [from, to]);
+  }, [from, to, investorId]);
 
   const { data, loading, error } = useFetch<PortalSummary>(`/portal/summary${qs}`, [qs]);
 
@@ -29,9 +35,25 @@ export default function PortalDashboard() {
 
   return (
     <>
+      {preview && (
+        <div className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-2xl border border-warning/30 bg-warning/[0.11] px-4 py-2.5 text-[13px] text-graphite-700">
+          <Eye size={15} className="flex-none text-warning" />
+          <span>
+            Previewing <b className="font-semibold text-graphite-900">{inv.name}</b>’s portal — you’re
+            still signed in as admin. This is exactly what {inv.name.split(" ")[0]} sees.
+          </span>
+          <Link
+            to="/admin/investors"
+            className="ml-auto inline-flex items-center gap-1 text-[12px] font-semibold text-graphite-900 underline underline-offset-[3px]"
+          >
+            <ArrowLeft size={13} /> Back to Investors
+          </Link>
+        </div>
+      )}
+
       <PageHeader
-        title="Your account"
-        subtitle={`${inv.name} · read-only statement`}
+        title={preview ? `${inv.name}` : "Your account"}
+        subtitle={preview ? "Investor portal · admin preview" : `${inv.name} · read-only statement`}
         action={
           <Badge tone="neutral">
             <Lock size={11} className="mr-1" /> Read-only

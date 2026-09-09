@@ -3,7 +3,7 @@ import rateLimit from "express-rate-limit";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { prisma } from "../lib/prisma.js";
-import { authRequired, signToken } from "../lib/auth.js";
+import { authRequired, signToken, pwdStamp } from "../lib/auth.js";
 
 export const authRouter = Router();
 
@@ -17,6 +17,15 @@ const loginLimiter = rateLimit({
   standardHeaders: "draft-7",
   legacyHeaders: false,
   message: { error: "Too many sign-in attempts. Wait a few minutes and try again." },
+});
+
+// Throttle other credential-sensitive mutations (password change, etc.).
+const sensitiveLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 15,
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+  message: { error: "Too many attempts. Wait a few minutes and try again." },
 });
 
 const loginSchema = z.object({
@@ -45,6 +54,7 @@ authRouter.post("/login", loginLimiter, async (req, res) => {
     role: user.role as "ADMIN" | "INVESTOR",
     investorId: user.investorId,
     username: user.username,
+    pv: pwdStamp(user.password),
   });
 
   res.json({
@@ -81,7 +91,7 @@ const changePasswordSchema = z.object({
   newPassword: z.string().min(12),
 });
 
-authRouter.post("/change-password", authRequired, async (req, res) => {
+authRouter.post("/change-password", sensitiveLimiter, authRequired, async (req, res) => {
   const parsed = changePasswordSchema.safeParse(req.body);
   if (!parsed.success)
     return res.status(400).json({ error: "New password must be at least 12 characters" });

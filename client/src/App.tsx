@@ -32,6 +32,7 @@ function AdminArea() {
           <Route path="expenses" element={<Expenses />} />
           <Route path="categories" element={<Categories />} />
           <Route path="reports" element={<Reports />} />
+          <Route path="view/:investorId" element={<PortalDashboard />} />
           <Route path="*" element={<Navigate to="/admin" replace />} />
         </Routes>
       </AppShell>

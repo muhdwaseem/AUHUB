@@ -1,10 +1,12 @@
 import { Router } from "express";
 import { prisma } from "../lib/prisma.js";
-import { authRequired, investorRequired } from "../lib/auth.js";
+import { authRequired } from "../lib/auth.js";
 import { buildReport, shareFor, type PeriodSummary } from "../lib/accounting.js";
 
 export const portalRouter = Router();
-portalRouter.use(authRequired, investorRequired);
+// An investor sees only their own statement. An admin may pass ?investorId= to
+// preview any investor's statement ("view as") without leaving their own session.
+portalRouter.use(authRequired);
 
 /**
  * What an investor is allowed to see (from the brief):
@@ -49,9 +51,18 @@ function investorView(
 }
 
 portalRouter.get("/summary", async (req, res) => {
-  const investor = await prisma.investor.findUnique({
-    where: { id: req.auth!.investorId! },
-  });
+  const isAdmin = req.auth!.role === "ADMIN";
+  // Investors are always pinned to their own id; the query param is ignored for
+  // them so it can't be used to peek at another investor.
+  const targetId = isAdmin
+    ? String((req.query.investorId as string) || "")
+    : req.auth!.investorId;
+  if (!targetId)
+    return res
+      .status(isAdmin ? 400 : 403)
+      .json({ error: isAdmin ? "investorId is required" : "Investor access required" });
+
+  const investor = await prisma.investor.findUnique({ where: { id: targetId } });
   if (!investor) return res.status(404).json({ error: "Investor record not found" });
 
   const { from, to } = req.query as Record<string, string>;

@@ -1,6 +1,8 @@
 import { FormEvent, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Copy,
+  Eye,
   KeyRound,
   Pencil,
   Plus,
@@ -42,6 +44,7 @@ const blank = {
 };
 
 export default function Investors() {
+  const navigate = useNavigate();
   const { data, loading, error, reload } = useFetch<ListResp>("/investors");
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Investor | null>(null);
@@ -240,6 +243,12 @@ export default function Investors() {
                   </td>
                   <td className="px-3 py-3 sm:px-5">
                     <div className="flex justify-end gap-1">
+                      <IconBtn
+                        title="View investor portal"
+                        onClick={() => navigate(`/admin/view/${inv.id}`)}
+                      >
+                        <Eye size={15} />
+                      </IconBtn>
                       <IconBtn title="Edit" onClick={() => openEdit(inv)}>
                         <Pencil size={15} />
                       </IconBtn>
