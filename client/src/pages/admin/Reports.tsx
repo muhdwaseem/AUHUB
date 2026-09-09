@@ -134,7 +134,7 @@ export default function Reports() {
           <table className="w-full min-w-[640px] text-sm">
             <thead>
               <tr className="border-b border-graphite-100 text-left text-xs uppercase tracking-wide text-graphite-400">
-                <th className="px-5 py-2.5 font-medium">Investor</th>
+                <th className="px-3 py-2.5 sm:px-5 font-medium">Investor</th>
                 <th className="px-4 py-2.5 text-right font-medium">Share</th>
                 <th className="px-4 py-2.5 text-right font-medium">Gross share</th>
                 <th className="px-4 py-2.5 text-right font-medium">Shared exp.</th>
@@ -146,7 +146,7 @@ export default function Reports() {
             <tbody className="divide-y divide-graphite-50">
               {data.investorSplit.map((s) => (
                 <tr key={s.investorId}>
-                  <td className="px-5 py-3 font-medium text-graphite-700">{s.name}</td>
+                  <td className="px-3 py-3 sm:px-5 font-medium text-graphite-700">{s.name}</td>
                   <td className="px-4 py-3 text-right tnum text-accent-text">{pct(s.sharePercentage)}</td>
                   <td className="px-4 py-3 text-right tnum">{money(s.grossShare)}</td>
                   <td className="px-4 py-3 text-right tnum text-graphite-500">
@@ -186,7 +186,7 @@ export default function Reports() {
             <table className="w-full min-w-[420px] text-sm">
               <thead>
                 <tr className="border-b border-graphite-100 text-left text-xs uppercase tracking-wide text-graphite-400">
-                  <th className="px-5 py-2.5 font-medium">Investor</th>
+                  <th className="px-3 py-2.5 sm:px-5 font-medium">Investor</th>
                   <th className="px-4 py-2.5 text-right font-medium">Charged to them</th>
                   <th className="px-4 py-2.5 text-right font-medium">Tagged only (still shared)</th>
                 </tr>
@@ -194,7 +194,7 @@ export default function Reports() {
               <tbody className="divide-y divide-graphite-50">
                 {data.expensesByInvestor.map((r) => (
                   <tr key={r.name}>
-                    <td className="px-5 py-2.5 text-graphite-600">{r.name}</td>
+                    <td className="px-3 py-2.5 sm:px-5 text-graphite-600">{r.name}</td>
                     <td className="px-4 py-2.5 text-right tnum font-medium text-warning">
                       {r.charged > 0 ? money(r.charged) : "—"}
                     </td>
@@ -216,13 +216,13 @@ export default function Reports() {
             <tbody className="divide-y divide-graphite-50">
               {data.expensesByCategory.map((c) => (
                 <tr key={c.name}>
-                  <td className="px-5 py-2.5 text-graphite-600">{c.name}</td>
-                  <td className="px-5 py-2.5 text-right tnum font-medium">{money(c.amount)}</td>
+                  <td className="px-3 py-2.5 sm:px-5 text-graphite-600">{c.name}</td>
+                  <td className="px-3 py-2.5 sm:px-5 text-right tnum font-medium">{money(c.amount)}</td>
                 </tr>
               ))}
               <tr className="bg-graphite-50">
-                <td className="px-5 py-2.5 font-semibold text-graphite-700">Total</td>
-                <td className="px-5 py-2.5 text-right tnum font-semibold">
+                <td className="px-3 py-2.5 sm:px-5 font-semibold text-graphite-700">Total</td>
+                <td className="px-3 py-2.5 sm:px-5 text-right tnum font-semibold">
                   {money(o.totalExpenses)}
                 </td>
               </tr>
@@ -237,7 +237,7 @@ export default function Reports() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-graphite-100 text-left text-xs uppercase tracking-wide text-graphite-400">
-                <th className="px-5 py-2.5 font-medium">Date</th>
+                <th className="px-3 py-2.5 sm:px-5 font-medium">Date</th>
                 <th className="px-4 py-2.5 text-right font-medium">Bought</th>
                 <th className="px-4 py-2.5 text-right font-medium">Sold</th>
                 <th className="px-4 py-2.5 text-right font-medium">Stock left</th>
@@ -257,7 +257,7 @@ export default function Reports() {
                       onClick={() => setExpandedDay(isOpen ? null : d.date)}
                       className="cursor-pointer hover:bg-graphite-50/60"
                     >
-                      <td className="px-5 py-2.5 font-medium text-graphite-700">
+                      <td className="px-3 py-2.5 sm:px-5 font-medium text-graphite-700">
                         {shortDate(d.date)}
                       </td>
                       <td className="px-4 py-2.5 text-right tnum">{grams(d.goldBoughtGrams)}</td>
@@ -280,7 +280,7 @@ export default function Reports() {
                     </tr>
                     {isOpen && split && (
                       <tr className="bg-graphite-50/70">
-                        <td colSpan={8} className="px-5 py-3">
+                        <td colSpan={8} className="px-3 py-3 sm:px-5">
                           <div className="text-xs font-medium text-graphite-500">
                             Investor split for {shortDate(d.date)}
                           </div>

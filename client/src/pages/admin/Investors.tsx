@@ -184,18 +184,18 @@ export default function Investors() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-graphite-100 text-left text-xs uppercase tracking-wide text-graphite-400">
-                <th className="px-5 py-2.5 font-medium">Investor</th>
-                <th className="px-5 py-2.5 font-medium">Contact</th>
-                <th className="px-5 py-2.5 text-right font-medium">Share</th>
-                <th className="px-5 py-2.5 text-right font-medium">Capital</th>
-                <th className="px-5 py-2.5 font-medium">Login</th>
-                <th className="px-5 py-2.5 font-medium"></th>
+                <th className="px-3 py-2.5 sm:px-5 font-medium">Investor</th>
+                <th className="px-3 py-2.5 sm:px-5 font-medium">Contact</th>
+                <th className="px-3 py-2.5 sm:px-5 text-right font-medium">Share</th>
+                <th className="px-3 py-2.5 sm:px-5 text-right font-medium">Capital</th>
+                <th className="px-3 py-2.5 sm:px-5 font-medium">Login</th>
+                <th className="px-3 py-2.5 sm:px-5 font-medium"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-graphite-50">
               {data?.investors.map((inv) => (
                 <tr key={inv.id} className="hover:bg-graphite-50/60">
-                  <td className="px-5 py-3">
+                  <td className="px-3 py-3 sm:px-5">
                     <div className="font-medium text-graphite-800">{inv.name}</div>
                     <div className="text-xs text-graphite-400">
                       Joined {shortDate(inv.joinedAt)}
@@ -215,18 +215,18 @@ export default function Investors() {
                       </button>
                     )}
                   </td>
-                  <td className="px-5 py-3 text-xs text-graphite-500">
+                  <td className="px-3 py-3 sm:px-5 text-xs text-graphite-500">
                     {inv.email || "—"}
                     <br />
                     {inv.phone || "—"}
                   </td>
-                  <td className="px-5 py-3 text-right tnum font-medium text-accent-text">
+                  <td className="px-3 py-3 sm:px-5 text-right tnum font-medium text-accent-text">
                     {pct(inv.sharePercentage)}
                   </td>
-                  <td className="px-5 py-3 text-right tnum text-graphite-600">
+                  <td className="px-3 py-3 sm:px-5 text-right tnum text-graphite-600">
                     {money(inv.capitalInvested)}
                   </td>
-                  <td className="px-5 py-3">
+                  <td className="px-3 py-3 sm:px-5">
                     {inv.loginStatus === "ACTIVE" ? (
                       <Badge tone="green">active</Badge>
                     ) : inv.loginStatus === "INVALID" ? (
@@ -238,7 +238,7 @@ export default function Investors() {
                       {inv.username}
                     </div>
                   </td>
-                  <td className="px-5 py-3">
+                  <td className="px-3 py-3 sm:px-5">
                     <div className="flex justify-end gap-1">
                       <IconBtn title="Edit" onClick={() => openEdit(inv)}>
                         <Pencil size={15} />

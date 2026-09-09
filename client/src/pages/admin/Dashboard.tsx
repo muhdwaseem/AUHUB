@@ -431,7 +431,7 @@ export default function Dashboard() {
           <div className="grid flex-1 grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
               <Kicker>Net · after expenses</Kicker>
-              <div className="my-2 font-serif text-[33px] font-semibold leading-[1.05] -tracking-[0.03em] tabular-nums text-graphite-900">
+              <div className="my-2 font-serif text-[26px] sm:text-[33px] font-semibold leading-[1.05] -tracking-[0.03em] tabular-nums text-graphite-900">
                 <span className="mr-1.5 text-[14px] font-normal text-graphite-500">AED</span>
                 {num(o.netProfit)}
               </div>
@@ -441,7 +441,7 @@ export default function Dashboard() {
             </div>
             <div className="sm:border-l sm:border-ink-700 sm:pl-4">
               <Kicker>Gross · before expenses</Kicker>
-              <div className="my-2 font-serif text-[33px] font-semibold leading-[1.05] -tracking-[0.03em] tabular-nums text-gold-500">
+              <div className="my-2 font-serif text-[26px] sm:text-[33px] font-semibold leading-[1.05] -tracking-[0.03em] tabular-nums text-gold-500">
                 <span className="mr-1.5 text-[14px] font-normal text-graphite-500">AED</span>
                 {num(o.grossProfit)}
               </div>
@@ -571,8 +571,8 @@ export default function Dashboard() {
               View all {s.counts.transactions}
             </Link>
           </div>
-          <div className="flex flex-col gap-[7px] overflow-x-auto">
-            <div className="grid min-w-[520px] grid-cols-[52px_58px_minmax(120px,1fr)_70px_74px_92px] gap-3 px-[18px] pb-0.5 text-[9px] font-semibold uppercase tracking-[0.14em] text-graphite-500">
+          <div className="flex flex-col gap-[7px] sm:overflow-x-auto">
+            <div className="hidden min-w-[520px] grid-cols-[52px_58px_minmax(120px,1fr)_70px_74px_92px] gap-3 px-[18px] pb-0.5 text-[9px] font-semibold uppercase tracking-[0.14em] text-graphite-500 sm:grid">
               <span>Date</span>
               <span>Side</span>
               <span>Counterparty</span>
@@ -580,29 +580,49 @@ export default function Dashboard() {
               <span className="text-right">Rate</span>
               <span className="text-right">Value</span>
             </div>
-            {recent.map((t) => (
-              <div
-                key={t.id}
-                className="grid min-w-[520px] grid-cols-[52px_58px_minmax(120px,1fr)_70px_74px_92px] items-center gap-3 rounded-full bg-ink-900 px-[18px] py-[9px]"
-              >
-                <span className="whitespace-nowrap font-mono text-[11.5px] text-graphite-500">
-                  {new Date(t.date).toLocaleDateString("en-GB", { day: "2-digit", month: "short" })}
-                </span>
+            {recent.map((t) => {
+              const sideBadge = (
                 <span
-                  className={`inline-flex w-14 justify-center rounded-full py-[3px] font-mono text-[10px] font-semibold uppercase tracking-[0.1em] ${
+                  className={`inline-flex w-14 flex-none justify-center rounded-full py-[3px] font-mono text-[10px] font-semibold uppercase tracking-[0.1em] ${
                     t.type === "BUY" ? "bg-warning/12 text-gold-500" : "bg-positive/12 text-positive"
                   }`}
                 >
                   {t.type === "BUY" ? "Buy" : "Sell"}
                 </span>
-                <span className="overflow-hidden text-ellipsis whitespace-nowrap text-[12.5px] text-graphite-800">
-                  {t.counterparty || "—"} <em className="font-mono text-[10.5px] not-italic text-graphite-400">{t.quality}</em>
-                </span>
-                <span className="text-right font-mono text-[12.5px] tabular-nums text-graphite-700">{num(t.quantityGrams, 0)} g</span>
-                <span className="text-right font-mono text-[12.5px] tabular-nums text-graphite-700">{num(t.ratePerGram)}</span>
-                <span className="text-right font-mono text-[12.5px] font-medium tabular-nums text-graphite-900">{num(t.totalAmount)}</span>
-              </div>
-            ))}
+              );
+              const day = new Date(t.date).toLocaleDateString("en-GB", { day: "2-digit", month: "short" });
+              return (
+                <div key={t.id}>
+                  {/* mobile: stacked card */}
+                  <div className="flex items-center gap-3 rounded-2xl bg-ink-900 px-3.5 py-2.5 sm:hidden">
+                    {sideBadge}
+                    <div className="min-w-0 flex-1">
+                      <b className="block truncate text-[12.5px] font-medium text-graphite-800">
+                        {t.counterparty || "—"}{" "}
+                        <em className="font-mono text-[10.5px] not-italic text-graphite-400">{t.quality}</em>
+                      </b>
+                      <small className="font-mono text-[10.5px] text-graphite-500">
+                        {day} · {num(t.quantityGrams, 0)} g @ {num(t.ratePerGram)}
+                      </small>
+                    </div>
+                    <span className="whitespace-nowrap font-mono text-[12.5px] font-semibold tabular-nums text-graphite-900">
+                      {num(t.totalAmount)}
+                    </span>
+                  </div>
+                  {/* desktop: grid row */}
+                  <div className="hidden min-w-[520px] grid-cols-[52px_58px_minmax(120px,1fr)_70px_74px_92px] items-center gap-3 rounded-full bg-ink-900 px-[18px] py-[9px] sm:grid">
+                    <span className="whitespace-nowrap font-mono text-[11.5px] text-graphite-500">{day}</span>
+                    {sideBadge}
+                    <span className="overflow-hidden text-ellipsis whitespace-nowrap text-[12.5px] text-graphite-800">
+                      {t.counterparty || "—"} <em className="font-mono text-[10.5px] not-italic text-graphite-400">{t.quality}</em>
+                    </span>
+                    <span className="text-right font-mono text-[12.5px] tabular-nums text-graphite-700">{num(t.quantityGrams, 0)} g</span>
+                    <span className="text-right font-mono text-[12.5px] tabular-nums text-graphite-700">{num(t.ratePerGram)}</span>
+                    <span className="text-right font-mono text-[12.5px] font-medium tabular-nums text-graphite-900">{num(t.totalAmount)}</span>
+                  </div>
+                </div>
+              );
+            })}
           </div>
           <div className="mt-3 flex flex-wrap justify-between gap-2.5 border-t border-ink-700 pt-3 font-mono text-[11.5px] text-graphite-500">
             <span>
@@ -644,7 +664,7 @@ export default function Dashboard() {
           <TileHead title="Expenses" right={`${s.counts.expenses} postings`} />
           <div className="mb-4 flex items-baseline gap-2.5">
             <Kicker>Total</Kicker>
-            <span className="font-serif text-[29px] font-semibold -tracking-[0.03em] text-negative">{money(o.totalExpenses)}</span>
+            <span className="font-serif text-[23px] font-semibold -tracking-[0.03em] text-negative sm:text-[29px]">{money(o.totalExpenses)}</span>
           </div>
           <div className="flex flex-1 flex-col gap-3.5">
             {cats.map((c) => (

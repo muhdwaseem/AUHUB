@@ -139,35 +139,35 @@ export default function Gold() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-graphite-100 text-left text-xs uppercase tracking-wide text-graphite-400">
-                <th className="px-5 py-2.5 font-medium">Date</th>
-                <th className="px-5 py-2.5 font-medium">Type</th>
-                <th className="px-5 py-2.5 font-medium">Quality</th>
-                <th className="px-5 py-2.5 text-right font-medium">Weight</th>
-                <th className="px-5 py-2.5 text-right font-medium">Rate/g</th>
-                <th className="px-5 py-2.5 text-right font-medium">Total</th>
-                <th className="px-5 py-2.5 font-medium">Counterparty</th>
-                <th className="px-5 py-2.5"></th>
+                <th className="px-3 py-2.5 sm:px-5 font-medium">Date</th>
+                <th className="px-3 py-2.5 sm:px-5 font-medium">Type</th>
+                <th className="px-3 py-2.5 sm:px-5 font-medium">Quality</th>
+                <th className="px-3 py-2.5 sm:px-5 text-right font-medium">Weight</th>
+                <th className="px-3 py-2.5 sm:px-5 text-right font-medium">Rate/g</th>
+                <th className="px-3 py-2.5 sm:px-5 text-right font-medium">Total</th>
+                <th className="px-3 py-2.5 sm:px-5 font-medium">Counterparty</th>
+                <th className="px-3 py-2.5 sm:px-5"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-graphite-50">
               {data?.transactions.map((t) => (
                 <tr key={t.id} className="hover:bg-graphite-50/60">
-                  <td className="px-5 py-3 text-graphite-600">{shortDate(t.date)}</td>
-                  <td className="px-5 py-3">
+                  <td className="px-3 py-3 sm:px-5 text-graphite-600">{shortDate(t.date)}</td>
+                  <td className="px-3 py-3 sm:px-5">
                     <Badge tone={t.type === "BUY" ? "amber" : "green"}>
                       {t.type === "BUY" ? "Purchase" : "Sale"}
                     </Badge>
                   </td>
-                  <td className="px-5 py-3 font-medium text-graphite-700">{t.quality}</td>
-                  <td className="px-5 py-3 text-right tnum">{grams(t.quantityGrams)}</td>
-                  <td className="px-5 py-3 text-right tnum">{money(t.ratePerGram)}</td>
-                  <td className="px-5 py-3 text-right tnum font-medium">
+                  <td className="px-3 py-3 sm:px-5 font-medium text-graphite-700">{t.quality}</td>
+                  <td className="px-3 py-3 sm:px-5 text-right tnum">{grams(t.quantityGrams)}</td>
+                  <td className="px-3 py-3 sm:px-5 text-right tnum">{money(t.ratePerGram)}</td>
+                  <td className="px-3 py-3 sm:px-5 text-right tnum font-medium">
                     {money(t.totalAmount)}
                   </td>
-                  <td className="px-5 py-3 text-xs text-graphite-500">
+                  <td className="px-3 py-3 sm:px-5 text-xs text-graphite-500">
                     {t.counterparty || "—"}
                   </td>
-                  <td className="px-5 py-3">
+                  <td className="px-3 py-3 sm:px-5">
                     <div className="flex justify-end gap-1">
                       <button
                         onClick={() => openEdit(t)}

@@ -40,9 +40,9 @@ export default function PortalDashboard() {
       />
 
       {/* Profile + the focal share donut */}
-      <div className="grid gap-6 lg:grid-cols-[1fr_1.5fr]">
+      <div className="grid gap-4 sm:gap-6 lg:grid-cols-[1fr_1.5fr]">
         <Card>
-          <div className="p-6">
+          <div className="p-5 sm:p-6">
             <div className="font-serif text-lg font-semibold text-graphite-900">{inv.name}</div>
             <dl className="mt-5 space-y-3.5 text-sm">
               <ProfileRow label="Profit share" value={pct(inv.sharePercentage)} />
@@ -52,7 +52,7 @@ export default function PortalDashboard() {
           </div>
         </Card>
 
-        <div className="flex flex-col items-center gap-6 rounded-xl border border-gold-500/30 bg-gold-500/10 p-6 shadow-[0_6px_16px_-4px_rgba(0,0,0,0.35)] sm:flex-row sm:gap-8">
+        <div className="flex flex-col items-center gap-5 rounded-xl border border-gold-500/30 bg-gold-500/10 p-5 shadow-[0_6px_16px_-4px_rgba(0,0,0,0.35)] sm:flex-row sm:gap-8 sm:p-6">
           <GaugeRing
             value={inv.sharePercentage}
             size={168}
@@ -64,7 +64,7 @@ export default function PortalDashboard() {
               My net profit share
             </div>
             <div
-              className={`mt-1.5 text-3xl font-bold ${
+              className={`mt-1.5 text-2xl font-bold sm:text-3xl ${
                 o.myNetShare >= 0 ? "text-accent-text" : "text-negative"
               }`}
             >
@@ -111,7 +111,7 @@ export default function PortalDashboard() {
 
       {/* Whole-book context — one compact strip (all losses are visible to every investor) */}
       <Card title="Whole book" className="mt-6">
-        <dl className="grid grid-cols-2 gap-x-6 gap-y-4 p-5 sm:grid-cols-3 lg:grid-cols-6">
+        <dl className="grid grid-cols-2 gap-x-4 gap-y-4 p-4 sm:grid-cols-3 sm:gap-x-6 sm:p-5 lg:grid-cols-6">
           <ContextItem
             label="Net profit"
             value={money(o.netProfit)}
