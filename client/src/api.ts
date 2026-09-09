@@ -31,7 +31,18 @@ api.interceptors.response.use(
 
 export function apiError(err: unknown): string {
   if (axios.isAxiosError(err)) {
-    return err.response?.data?.error || err.message || "Request failed";
+    const body = err.response?.data;
+    // Our API sends { error: "message" }. A crashed/edge response (e.g. Vercel's
+    // { error: { code, message } }) can nest it — never let a non-string escape,
+    // it would be rendered as a React child and blow up the page.
+    const candidates = [
+      typeof body === "string" ? body : undefined,
+      typeof body?.error === "string" ? body.error : body?.error?.message,
+      body?.message,
+      err.message,
+    ];
+    const msg = candidates.find((c) => typeof c === "string" && c.length > 0);
+    return msg || "Request failed";
   }
   return "Something went wrong";
 }

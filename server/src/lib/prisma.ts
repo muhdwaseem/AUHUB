@@ -1,4 +1,4 @@
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient } from "../generated/prisma/index.js";
 
 // Reuse one client across warm serverless invocations (and dev HMR) so we don't
 // open a new pool on every request.

@@ -5,6 +5,9 @@
 
 generator client {
   provider      = "prisma-client-js"
+  // Generate into the source tree (not node_modules) so the serverless bundler
+  // ships the client and its query engine. binaryTargets covers Vercel's runtime.
+  output        = "../src/generated/prisma"
   binaryTargets = ["native", "rhel-openssl-3.0.x"]
 }
 

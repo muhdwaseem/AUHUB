@@ -7,6 +7,9 @@ build/
 .env.local
 *.local
 
+# generated Prisma client (rebuilt by `prisma generate` / postinstall / vercel-build)
+server/src/generated/
+
 # database
 server/prisma/*.db
 server/prisma/*.db-journal
