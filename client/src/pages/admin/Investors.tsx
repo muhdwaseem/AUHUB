@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import { api, apiError } from "../../api";
 import { useFetch } from "../../useApi";
-import type { Investor } from "../../types";
+import type { Investor, ReportSummary } from "../../types";
 import { PageHeader } from "../../components/AppShell";
 import {
   Badge,
@@ -46,6 +46,8 @@ const blank = {
 export default function Investors() {
   const navigate = useNavigate();
   const { data, loading, error, reload } = useFetch<ListResp>("/investors");
+  // Current P/L per active investor, to show a running balance next to capital.
+  const { data: report } = useFetch<ReportSummary>("/reports/summary");
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Investor | null>(null);
   const [form, setForm] = useState(blank);
@@ -156,6 +158,30 @@ export default function Investors() {
   if (error) return <ErrorNote>{error}</ErrorNote>;
 
   const totalShare = data?.totalActiveShare ?? 0;
+
+  const plById = new Map(
+    (report?.investorSplit ?? []).map((r) => [r.investorId, r.netShare])
+  );
+
+  /** Running balance = capital invested + their net profit share to date. */
+  const balanceLine = (inv: Investor) => {
+    if (!report) return null;
+    const pl = plById.get(inv.id) ?? 0;
+    const balance = inv.capitalInvested + pl;
+    return (
+      <span className="text-[11px] text-graphite-400">
+        Balance{" "}
+        <span className="tnum font-medium text-graphite-700">{money(balance)}</span>
+        {Math.abs(pl) >= 0.01 && (
+          <span className={`tnum ${pl > 0 ? "text-positive" : "text-negative"}`}>
+            {" "}
+            ({pl > 0 ? "+" : "−"}
+            {money(Math.abs(pl))})
+          </span>
+        )}
+      </span>
+    );
+  };
 
   const loginBadge = (inv: Investor) =>
     inv.loginStatus === "ACTIVE" ? (
@@ -273,6 +299,9 @@ export default function Investors() {
                   <span className="text-graphite-400">Capital </span>
                   <b className="tnum font-medium text-graphite-700">{money(inv.capitalInvested)}</b>
                 </div>
+                {report && (
+                  <div className="col-span-2 text-right">{balanceLine(inv)}</div>
+                )}
                 <div className="col-span-2 truncate text-[11.5px] text-graphite-400">
                   {inv.username} · {inv.email || "—"} · {inv.phone || "—"}
                 </div>
@@ -291,7 +320,7 @@ export default function Investors() {
                 <th className="px-5 py-2.5 font-medium">Investor</th>
                 <th className="px-5 py-2.5 font-medium">Contact</th>
                 <th className="px-5 py-2.5 text-right font-medium">Share</th>
-                <th className="px-5 py-2.5 text-right font-medium">Capital</th>
+                <th className="px-5 py-2.5 text-right font-medium">Capital / balance</th>
                 <th className="px-5 py-2.5 font-medium">Login</th>
                 <th className="px-5 py-2.5 font-medium"></th>
               </tr>
@@ -320,8 +349,9 @@ export default function Investors() {
                   <td className="px-5 py-3 text-right tnum font-medium text-accent-text">
                     {pct(inv.sharePercentage)}
                   </td>
-                  <td className="px-5 py-3 text-right tnum text-graphite-600">
-                    {money(inv.capitalInvested)}
+                  <td className="px-5 py-3 text-right">
+                    <div className="tnum text-graphite-600">{money(inv.capitalInvested)}</div>
+                    <div className="mt-0.5">{balanceLine(inv)}</div>
                   </td>
                   <td className="px-5 py-3">
                     {loginBadge(inv)}
