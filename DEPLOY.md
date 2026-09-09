@@ -66,7 +66,13 @@ git push
    | `DATABASE_URL` | Supabase **transaction pooler** URL (port 6543, `?pgbouncer=true&connection_limit=1`) |
    | `DIRECT_URL` | Supabase **session pooler** URL (port 5432) |
    | `JWT_SECRET` | a long random string (`node -e "console.log(crypto.randomBytes(48).toString('base64url'))"`) |
-   | `NODE_ENV` | `production` |
+
+   > **Do not add a `NODE_ENV` variable yourself.** Vercel sets `NODE_ENV=production`
+   > for the runtime automatically. Setting it as a project env var also applies it
+   > to the *build*, which makes `npm install` skip devDependencies (vite, prisma,
+   > typescript, tsx) and the build fails. `vercel.json` already forces
+   > `npm install --include=dev`, but leave `NODE_ENV` unset regardless. If you
+   > added it during a failed attempt, delete it and redeploy.
 
 4. **Deploy.**
 
@@ -116,6 +122,12 @@ The domain itself is bought separately (~$10–15/yr, any registrar).
 
 ## Troubleshooting
 
+- **Build fails: `vite: command not found` / `prisma: not found` / `tsx: not found`**
+  (build log shows the client install adding only ~75 packages) — devDependencies
+  were skipped. Vercel's build container runs with `NODE_ENV=production`, so a plain
+  `npm install` drops devDeps. `vercel.json` now uses `npm install --include=dev`
+  for all three installs; make sure you didn't also add a `NODE_ENV=production`
+  **project env var** (delete it if you did) and redeploy.
 - **`/api/health` returns 500 "Cannot find module 'express'" (or `@prisma/client`)** —
   the function bundler didn't pick up `server/node_modules`. Confirm the build log
   ran `npm --prefix server install`. If it still fails, add `express`,
