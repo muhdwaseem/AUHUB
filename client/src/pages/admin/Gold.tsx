@@ -106,6 +106,25 @@ export default function Gold() {
   if (loading) return <Spinner />;
   if (error) return <ErrorNote>{error}</ErrorNote>;
 
+  const rowActions = (t: GoldTxn) => (
+    <div className="flex justify-end gap-1">
+      <button
+        onClick={() => openEdit(t)}
+        aria-label="Edit trade"
+        className="flex h-11 w-11 items-center justify-center rounded-md text-graphite-400 hover:bg-graphite-100 hover:text-graphite-700"
+      >
+        <Pencil size={15} />
+      </button>
+      <button
+        onClick={() => remove(t)}
+        aria-label="Delete trade"
+        className="flex h-11 w-11 items-center justify-center rounded-md text-graphite-400 hover:bg-red-500/10 hover:text-negative"
+      >
+        <Trash2 size={15} />
+      </button>
+    </div>
+  );
+
   return (
     <>
       <PageHeader
@@ -135,63 +154,77 @@ export default function Gold() {
       </div>
 
       <Card>
-        <div className="overflow-x-auto">
+        {data?.transactions.length === 0 && (
+          <p className="px-4 py-14 text-center text-sm text-graphite-400">No trades recorded.</p>
+        )}
+
+        {/* mobile: one card per trade */}
+        <div className="divide-y divide-graphite-50 sm:hidden">
+          {data?.transactions.map((t) => (
+            <div key={t.id} className="px-3.5 py-3.5">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <Badge tone={t.type === "BUY" ? "amber" : "green"}>
+                    {t.type === "BUY" ? "Purchase" : "Sale"}
+                  </Badge>
+                  <span className="font-medium text-graphite-700">{t.quality}</span>
+                </div>
+                <span className="text-xs text-graphite-400">{shortDate(t.date)}</span>
+              </div>
+              <div className="mt-2 grid grid-cols-3 gap-x-3 gap-y-1 text-[12.5px]">
+                <div>
+                  <div className="text-[10px] uppercase tracking-wide text-graphite-400">Weight</div>
+                  <b className="tnum font-medium">{grams(t.quantityGrams)}</b>
+                </div>
+                <div>
+                  <div className="text-[10px] uppercase tracking-wide text-graphite-400">Rate/g</div>
+                  <b className="tnum font-medium">{money(t.ratePerGram)}</b>
+                </div>
+                <div className="text-right">
+                  <div className="text-[10px] uppercase tracking-wide text-graphite-400">Total</div>
+                  <b className="tnum font-medium text-graphite-900">{money(t.totalAmount)}</b>
+                </div>
+              </div>
+              {t.counterparty && (
+                <div className="mt-1.5 truncate text-[11.5px] text-graphite-400">{t.counterparty}</div>
+              )}
+              <div className="mt-1.5 border-t border-graphite-100 pt-1.5">{rowActions(t)}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* desktop: table */}
+        <div className="hidden overflow-x-auto sm:block">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-graphite-100 text-left text-xs uppercase tracking-wide text-graphite-400">
-                <th className="px-3 py-2.5 sm:px-5 font-medium">Date</th>
-                <th className="px-3 py-2.5 sm:px-5 font-medium">Type</th>
-                <th className="px-3 py-2.5 sm:px-5 font-medium">Quality</th>
-                <th className="px-3 py-2.5 sm:px-5 text-right font-medium">Weight</th>
-                <th className="px-3 py-2.5 sm:px-5 text-right font-medium">Rate/g</th>
-                <th className="px-3 py-2.5 sm:px-5 text-right font-medium">Total</th>
-                <th className="px-3 py-2.5 sm:px-5 font-medium">Counterparty</th>
-                <th className="px-3 py-2.5 sm:px-5"></th>
+                <th className="px-5 py-2.5 font-medium">Date</th>
+                <th className="px-5 py-2.5 font-medium">Type</th>
+                <th className="px-5 py-2.5 font-medium">Quality</th>
+                <th className="px-5 py-2.5 text-right font-medium">Weight</th>
+                <th className="px-5 py-2.5 text-right font-medium">Rate/g</th>
+                <th className="px-5 py-2.5 text-right font-medium">Total</th>
+                <th className="px-5 py-2.5 font-medium">Counterparty</th>
+                <th className="px-5 py-2.5"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-graphite-50">
               {data?.transactions.map((t) => (
                 <tr key={t.id} className="hover:bg-graphite-50/60">
-                  <td className="px-3 py-3 sm:px-5 text-graphite-600">{shortDate(t.date)}</td>
-                  <td className="px-3 py-3 sm:px-5">
+                  <td className="px-5 py-3 text-graphite-600">{shortDate(t.date)}</td>
+                  <td className="px-5 py-3">
                     <Badge tone={t.type === "BUY" ? "amber" : "green"}>
                       {t.type === "BUY" ? "Purchase" : "Sale"}
                     </Badge>
                   </td>
-                  <td className="px-3 py-3 sm:px-5 font-medium text-graphite-700">{t.quality}</td>
-                  <td className="px-3 py-3 sm:px-5 text-right tnum">{grams(t.quantityGrams)}</td>
-                  <td className="px-3 py-3 sm:px-5 text-right tnum">{money(t.ratePerGram)}</td>
-                  <td className="px-3 py-3 sm:px-5 text-right tnum font-medium">
-                    {money(t.totalAmount)}
-                  </td>
-                  <td className="px-3 py-3 sm:px-5 text-xs text-graphite-500">
-                    {t.counterparty || "—"}
-                  </td>
-                  <td className="px-3 py-3 sm:px-5">
-                    <div className="flex justify-end gap-1">
-                      <button
-                        onClick={() => openEdit(t)}
-                        className="flex h-11 w-11 items-center justify-center rounded-md text-graphite-400 hover:bg-graphite-100 hover:text-graphite-700"
-                      >
-                        <Pencil size={15} />
-                      </button>
-                      <button
-                        onClick={() => remove(t)}
-                        className="flex h-11 w-11 items-center justify-center rounded-md text-graphite-400 hover:bg-red-500/10 hover:text-negative"
-                      >
-                        <Trash2 size={15} />
-                      </button>
-                    </div>
-                  </td>
+                  <td className="px-5 py-3 font-medium text-graphite-700">{t.quality}</td>
+                  <td className="px-5 py-3 text-right tnum">{grams(t.quantityGrams)}</td>
+                  <td className="px-5 py-3 text-right tnum">{money(t.ratePerGram)}</td>
+                  <td className="px-5 py-3 text-right tnum font-medium">{money(t.totalAmount)}</td>
+                  <td className="px-5 py-3 text-xs text-graphite-500">{t.counterparty || "—"}</td>
+                  <td className="px-5 py-3">{rowActions(t)}</td>
                 </tr>
               ))}
-              {data?.transactions.length === 0 && (
-                <tr>
-                  <td colSpan={8} className="px-5 py-14 text-center text-sm text-graphite-400">
-                    No trades recorded.
-                  </td>
-                </tr>
-              )}
             </tbody>
           </table>
         </div>

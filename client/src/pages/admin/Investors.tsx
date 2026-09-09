@@ -157,6 +157,48 @@ export default function Investors() {
 
   const totalShare = data?.totalActiveShare ?? 0;
 
+  const loginBadge = (inv: Investor) =>
+    inv.loginStatus === "ACTIVE" ? (
+      <Badge tone="green">active</Badge>
+    ) : inv.loginStatus === "INVALID" ? (
+      <Badge tone="red">invalid</Badge>
+    ) : (
+      <Badge tone="neutral">none</Badge>
+    );
+
+  const rowActions = (inv: Investor) => (
+    <div className="flex justify-end gap-1">
+      <IconBtn title="View investor portal" onClick={() => navigate(`/admin/view/${inv.id}`)}>
+        <Eye size={15} />
+      </IconBtn>
+      <IconBtn title="Edit" onClick={() => openEdit(inv)}>
+        <Pencil size={15} />
+      </IconBtn>
+      <IconBtn title="Regenerate credentials" onClick={() => regenerate(inv)}>
+        <KeyRound size={15} />
+      </IconBtn>
+      <IconBtn
+        title={inv.loginStatus === "INVALID" ? "Re-activate login" : "Make login invalid"}
+        onClick={() => toggleLogin(inv)}
+      >
+        {inv.loginStatus === "INVALID" ? <ShieldCheck size={15} /> : <ShieldOff size={15} />}
+      </IconBtn>
+      <IconBtn title="Delete" danger onClick={() => remove(inv)}>
+        <Trash2 size={15} />
+      </IconBtn>
+    </div>
+  );
+
+  const credsButton = (inv: Investor) =>
+    inv.generatedPassword ? (
+      <button
+        onClick={() => setCredsFor(inv)}
+        className="inline-flex items-center gap-1 text-[11px] font-medium text-graphite-500 underline decoration-dotted underline-offset-2 hover:text-accent-text"
+      >
+        <KeyRound size={11} /> Credentials not shared yet
+      </button>
+    ) : null;
+
   return (
     <>
       <PageHeader
@@ -183,22 +225,67 @@ export default function Investors() {
             </strong>
           </span>
         </div>
-        <div className="overflow-x-auto">
+        {data?.investors.length === 0 && (
+          <p className="px-4 py-14 text-center text-sm text-graphite-400">
+            No investors yet. Click “Add investor” to create the first one.
+          </p>
+        )}
+
+        {/* mobile: one card per investor */}
+        <div className="divide-y divide-graphite-50 sm:hidden">
+          {data?.investors.map((inv) => (
+            <div key={inv.id} className="px-3.5 py-3.5">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <div className="font-medium text-graphite-800">{inv.name}</div>
+                  <div className="text-xs text-graphite-400">
+                    Joined {shortDate(inv.joinedAt)}
+                    {inv.status === "INACTIVE" && (
+                      <>
+                        {" · "}
+                        <Badge tone="neutral">inactive</Badge>
+                      </>
+                    )}
+                  </div>
+                </div>
+                {loginBadge(inv)}
+              </div>
+              <div className="mt-2.5 grid grid-cols-2 gap-x-3 gap-y-1 text-[12.5px]">
+                <div>
+                  <span className="text-graphite-400">Share </span>
+                  <b className="tnum font-medium text-accent-text">{pct(inv.sharePercentage)}</b>
+                </div>
+                <div className="text-right">
+                  <span className="text-graphite-400">Capital </span>
+                  <b className="tnum font-medium text-graphite-700">{money(inv.capitalInvested)}</b>
+                </div>
+                <div className="col-span-2 truncate text-[11.5px] text-graphite-400">
+                  {inv.username} · {inv.email || "—"} · {inv.phone || "—"}
+                </div>
+              </div>
+              {inv.generatedPassword && <div className="mt-2">{credsButton(inv)}</div>}
+              <div className="mt-2 border-t border-graphite-100 pt-1.5">{rowActions(inv)}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* desktop: table */}
+        <div className="hidden overflow-x-auto sm:block">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-graphite-100 text-left text-xs uppercase tracking-wide text-graphite-400">
-                <th className="px-3 py-2.5 sm:px-5 font-medium">Investor</th>
-                <th className="px-3 py-2.5 sm:px-5 font-medium">Contact</th>
-                <th className="px-3 py-2.5 sm:px-5 text-right font-medium">Share</th>
-                <th className="px-3 py-2.5 sm:px-5 text-right font-medium">Capital</th>
-                <th className="px-3 py-2.5 sm:px-5 font-medium">Login</th>
-                <th className="px-3 py-2.5 sm:px-5 font-medium"></th>
+                <th className="px-5 py-2.5 font-medium">Investor</th>
+                <th className="px-5 py-2.5 font-medium">Contact</th>
+                <th className="px-5 py-2.5 text-right font-medium">Share</th>
+                <th className="px-5 py-2.5 text-right font-medium">Capital</th>
+                <th className="px-5 py-2.5 font-medium">Login</th>
+                <th className="px-5 py-2.5 font-medium"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-graphite-50">
               {data?.investors.map((inv) => (
                 <tr key={inv.id} className="hover:bg-graphite-50/60">
-                  <td className="px-3 py-3 sm:px-5">
+                  <td className="px-5 py-3">
                     <div className="font-medium text-graphite-800">{inv.name}</div>
                     <div className="text-xs text-graphite-400">
                       Joined {shortDate(inv.joinedAt)}
@@ -209,83 +296,26 @@ export default function Investors() {
                         </>
                       )}
                     </div>
-                    {inv.generatedPassword && (
-                      <button
-                        onClick={() => setCredsFor(inv)}
-                        className="mt-1 inline-flex items-center gap-1 text-[11px] font-medium text-graphite-500 underline decoration-dotted underline-offset-2 hover:text-accent-text"
-                      >
-                        <KeyRound size={11} /> Credentials not shared yet
-                      </button>
-                    )}
+                    {inv.generatedPassword && <div className="mt-1">{credsButton(inv)}</div>}
                   </td>
-                  <td className="px-3 py-3 sm:px-5 text-xs text-graphite-500">
+                  <td className="px-5 py-3 text-xs text-graphite-500">
                     {inv.email || "—"}
                     <br />
                     {inv.phone || "—"}
                   </td>
-                  <td className="px-3 py-3 sm:px-5 text-right tnum font-medium text-accent-text">
+                  <td className="px-5 py-3 text-right tnum font-medium text-accent-text">
                     {pct(inv.sharePercentage)}
                   </td>
-                  <td className="px-3 py-3 sm:px-5 text-right tnum text-graphite-600">
+                  <td className="px-5 py-3 text-right tnum text-graphite-600">
                     {money(inv.capitalInvested)}
                   </td>
-                  <td className="px-3 py-3 sm:px-5">
-                    {inv.loginStatus === "ACTIVE" ? (
-                      <Badge tone="green">active</Badge>
-                    ) : inv.loginStatus === "INVALID" ? (
-                      <Badge tone="red">invalid</Badge>
-                    ) : (
-                      <Badge tone="neutral">none</Badge>
-                    )}
-                    <div className="mt-0.5 text-[11px] text-graphite-400">
-                      {inv.username}
-                    </div>
+                  <td className="px-5 py-3">
+                    {loginBadge(inv)}
+                    <div className="mt-0.5 text-[11px] text-graphite-400">{inv.username}</div>
                   </td>
-                  <td className="px-3 py-3 sm:px-5">
-                    <div className="flex justify-end gap-1">
-                      <IconBtn
-                        title="View investor portal"
-                        onClick={() => navigate(`/admin/view/${inv.id}`)}
-                      >
-                        <Eye size={15} />
-                      </IconBtn>
-                      <IconBtn title="Edit" onClick={() => openEdit(inv)}>
-                        <Pencil size={15} />
-                      </IconBtn>
-                      <IconBtn
-                        title="Regenerate credentials"
-                        onClick={() => regenerate(inv)}
-                      >
-                        <KeyRound size={15} />
-                      </IconBtn>
-                      <IconBtn
-                        title={
-                          inv.loginStatus === "INVALID"
-                            ? "Re-activate login"
-                            : "Make login invalid"
-                        }
-                        onClick={() => toggleLogin(inv)}
-                      >
-                        {inv.loginStatus === "INVALID" ? (
-                          <ShieldCheck size={15} />
-                        ) : (
-                          <ShieldOff size={15} />
-                        )}
-                      </IconBtn>
-                      <IconBtn title="Delete" danger onClick={() => remove(inv)}>
-                        <Trash2 size={15} />
-                      </IconBtn>
-                    </div>
-                  </td>
+                  <td className="px-5 py-3">{rowActions(inv)}</td>
                 </tr>
               ))}
-              {data?.investors.length === 0 && (
-                <tr>
-                  <td colSpan={6} className="px-5 py-14 text-center text-sm text-graphite-400">
-                    No investors yet. Click “Add investor” to create the first one.
-                  </td>
-                </tr>
-              )}
             </tbody>
           </table>
         </div>

@@ -177,7 +177,7 @@ export default function Expenses() {
       </div>
 
       <Card>
-        <div className="flex items-center justify-between border-b border-graphite-100 px-5 py-2.5 text-xs text-graphite-500">
+        <div className="flex items-center justify-between border-b border-graphite-100 px-3.5 py-2.5 sm:px-5 text-xs text-graphite-500">
           <span>{data?.expenses.length ?? 0} expenses</span>
           <span>
             Total: <strong className="text-graphite-700">{money(data?.total ?? 0)}</strong>
@@ -185,7 +185,7 @@ export default function Expenses() {
         </div>
         <div className="divide-y divide-graphite-50">
           {data?.expenses.map((e) => (
-            <div key={e.id} className="px-5 py-3.5">
+            <div key={e.id} className="px-3.5 py-3.5 sm:px-5">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
