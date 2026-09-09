@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import { RequireRole, useAuth } from "./auth";
 import { AppShell, type NavItem } from "./components/AppShell";
 import Login from "./pages/Login";
+import DashboardLean from "./pages/admin/DashboardLean";
 import Dashboard from "./pages/admin/Dashboard";
 import Investors from "./pages/admin/Investors";
 import Gold from "./pages/admin/Gold";
@@ -26,7 +27,8 @@ function AdminArea() {
     <RequireRole role="ADMIN">
       <AppShell nav={adminNav}>
         <Routes>
-          <Route index element={<Dashboard />} />
+          <Route index element={<DashboardLean />} />
+          <Route path="dashboard-full" element={<Dashboard />} />
           <Route path="investors" element={<Investors />} />
           <Route path="gold" element={<Gold />} />
           <Route path="expenses" element={<Expenses />} />
