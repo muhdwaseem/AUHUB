@@ -6,13 +6,17 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "start": "tsx src/index.ts",
-    "setup": "prisma migrate dev --name init && tsx prisma/seed.ts",
+    "setup": "prisma migrate deploy && tsx prisma/seed.ts",
     "migrate": "prisma migrate dev",
+    "deploy": "prisma migrate deploy",
+    "generate": "prisma generate",
     "seed": "tsx prisma/seed.ts",
-    "studio": "prisma studio"
+    "studio": "prisma studio",
+    "postinstall": "prisma generate"
   },
   "dependencies": {
     "@prisma/client": "^6.2.1",
+    "@vercel/blob": "^0.27.0",
     "bcryptjs": "^2.4.3",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",

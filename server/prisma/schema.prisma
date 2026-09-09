@@ -1,14 +1,18 @@
-// CRMgold data model
-// Provider is SQLite for zero-config local running. To move to Postgres later,
-// change provider to "postgresql" and DATABASE_URL, then run `prisma migrate dev`.
+// CRMgold data model — PostgreSQL.
+// DATABASE_URL is the pooled connection (used by the app / serverless functions);
+// DIRECT_URL is the direct connection (used only by `prisma migrate`).
+// Local dev needs a Postgres URL too — a free Neon database works, or run
+// `docker run -e POSTGRES_PASSWORD=pw -p 5432:5432 postgres:16`.
 
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "rhel-openssl-3.0.x"]
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 /// Login accounts. One ADMIN (seeded) plus one auto-created account per investor.
@@ -81,7 +85,7 @@ model ExpenseAttachment {
   id           String   @id @default(cuid())
   expense      Expense  @relation(fields: [expenseId], references: [id], onDelete: Cascade)
   expenseId    String
-  filename     String // stored filename on disk
+  blobUrl      String // public Vercel Blob URL (random suffix — unguessable)
   originalName String
   mimeType     String
   size         Int

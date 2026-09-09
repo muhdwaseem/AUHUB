@@ -1,10 +1,8 @@
-import fs from "node:fs";
-import path from "node:path";
 import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../lib/prisma.js";
 import { authRequired, adminRequired } from "../lib/auth.js";
-import { upload, UPLOAD_DIR } from "../lib/upload.js";
+import { upload, putAttachment, deleteAttachment } from "../lib/upload.js";
 
 export const expensesRouter = Router();
 expensesRouter.use(authRequired, adminRequired);
@@ -86,26 +84,19 @@ expensesRouter.get("/", async (req, res) => {
 // Create with optional file attachments (multipart/form-data, field name "files")
 expensesRouter.post("/", upload.array("files", 10), async (req, res) => {
   const parsed = expenseSchema.safeParse(req.body);
-  if (!parsed.success) {
-    cleanupFiles(req.files as Express.Multer.File[]);
+  if (!parsed.success)
     return res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Invalid data" });
-  }
   const cat = await prisma.expenseCategory.findUnique({ where: { id: parsed.data.categoryId } });
-  if (!cat) {
-    cleanupFiles(req.files as Express.Multer.File[]);
-    return res.status(400).json({ error: "Expense header not found" });
-  }
+  if (!cat) return res.status(400).json({ error: "Expense header not found" });
 
   const linkErr = await validateInvestorLink(
     parsed.data.investorId,
     parsed.data.chargedToInvestor
   );
-  if (linkErr) {
-    cleanupFiles(req.files as Express.Multer.File[]);
-    return res.status(400).json({ error: linkErr });
-  }
+  if (linkErr) return res.status(400).json({ error: linkErr });
 
   const files = (req.files as Express.Multer.File[]) ?? [];
+  const stored = await Promise.all(files.map(putAttachment));
   const expense = await prisma.expense.create({
     data: {
       categoryId: parsed.data.categoryId,
@@ -115,11 +106,11 @@ expensesRouter.post("/", upload.array("files", 10), async (req, res) => {
       investorId: parsed.data.investorId ?? null,
       chargedToInvestor: !!parsed.data.chargedToInvestor && !!parsed.data.investorId,
       attachments: {
-        create: files.map((f) => ({
-          filename: f.filename,
-          originalName: f.originalname,
-          mimeType: f.mimetype,
-          size: f.size,
+        create: stored.map((s) => ({
+          blobUrl: s.blobUrl,
+          originalName: s.originalName,
+          mimeType: s.mimeType,
+          size: s.size,
         })),
       },
     },
@@ -167,19 +158,17 @@ expensesRouter.put("/:id", async (req, res) => {
 // Add attachments to an existing expense
 expensesRouter.post("/:id/attachments", upload.array("files", 10), async (req, res) => {
   const expense = await prisma.expense.findUnique({ where: { id: req.params.id } });
-  if (!expense) {
-    cleanupFiles(req.files as Express.Multer.File[]);
-    return res.status(404).json({ error: "Expense not found" });
-  }
+  if (!expense) return res.status(404).json({ error: "Expense not found" });
   const files = (req.files as Express.Multer.File[]) ?? [];
   if (files.length === 0) return res.status(400).json({ error: "No files uploaded" });
+  const stored = await Promise.all(files.map(putAttachment));
   await prisma.expenseAttachment.createMany({
-    data: files.map((f) => ({
+    data: stored.map((s) => ({
       expenseId: expense.id,
-      filename: f.filename,
-      originalName: f.originalname,
-      mimeType: f.mimetype,
-      size: f.size,
+      blobUrl: s.blobUrl,
+      originalName: s.originalName,
+      mimeType: s.mimeType,
+      size: s.size,
     })),
   });
   const updated = await prisma.expense.findUnique({
@@ -195,7 +184,7 @@ expensesRouter.delete("/:id/attachments/:attId", async (req, res) => {
   if (!att || att.expenseId !== req.params.id)
     return res.status(404).json({ error: "Attachment not found" });
   await prisma.expenseAttachment.delete({ where: { id: att.id } });
-  removeFile(att.filename);
+  await deleteAttachment(att.blobUrl);
   res.json({ ok: true });
 });
 
@@ -207,14 +196,6 @@ expensesRouter.delete("/:id", async (req, res) => {
   });
   if (!expense) return res.status(404).json({ error: "Expense not found" });
   await prisma.expense.delete({ where: { id: req.params.id } });
-  expense.attachments.forEach((a) => removeFile(a.filename));
+  await Promise.all(expense.attachments.map((a) => deleteAttachment(a.blobUrl)));
   res.json({ ok: true });
 });
-
-function removeFile(filename: string) {
-  const p = path.join(UPLOAD_DIR, filename);
-  fs.promises.unlink(p).catch(() => {});
-}
-function cleanupFiles(files?: Express.Multer.File[]) {
-  (files ?? []).forEach((f) => removeFile(f.filename));
-}

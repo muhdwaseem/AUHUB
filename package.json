@@ -10,7 +10,10 @@
     "dev:server": "npm --prefix server run dev",
     "dev:client": "npm --prefix client run dev",
     "build": "npm --prefix client run build",
-    "start": "npm --prefix server run start"
+    "start": "npm --prefix server run start",
+    "vercel-build": "npm --prefix server run generate && npm --prefix client run build",
+    "db:deploy": "npm --prefix server run deploy",
+    "db:seed": "npm --prefix server run seed"
   },
   "devDependencies": {
     "concurrently": "^9.1.2"

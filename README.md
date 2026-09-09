@@ -17,18 +17,20 @@ Built from the handwritten brief in `1.jpeg`.
 |---|---|---|
 | **Frontend** | React 18 + Vite + TypeScript | Fast dev server, tiny build, familiar component model |
 | **Styling / UI** | Tailwind CSS v4 + `lucide-react` icons + Recharts | Clean, consistent look with almost no custom CSS; Recharts for the profit trend chart |
-| **Backend** | Node.js + Express + TypeScript (run with `tsx`, no build step) | Small, explicit REST API; easy to read and extend |
-| **Database** | **SQLite** via **Prisma ORM** | Zero setup — the whole DB is one file (`server/prisma/dev.db`). Nothing to install or run. Switch to PostgreSQL later by changing two lines (see below). |
+| **Backend** | Node.js + Express + TypeScript (`tsx` locally; one serverless function on Vercel) | Small, explicit REST API; easy to read and extend |
+| **Database** | **PostgreSQL** via **Prisma ORM** | A managed Postgres (Neon's free tier works for both local dev and production) |
+| **File uploads** | `multer` (in-memory) → **Vercel Blob** | Payment slips / invoices as image or PDF, up to 15 MB each |
 | **Auth** | JWT (12 h) + bcrypt password hashing | Stateless, role-based (`ADMIN` / `INVESTOR`) |
-| **File uploads** | `multer` → local disk (`server/uploads/`) | Payment slips / invoices as image or PDF, up to 15 MB each |
 
-Everything runs on your machine. No cloud account, no Docker, no external
-services.
+### Local database
+Local dev needs a Postgres URL. Easiest is a free [Neon](https://neon.tech)
+database (use the same one for `DATABASE_URL` and `DIRECT_URL`), or run one in
+Docker: `docker run -e POSTGRES_PASSWORD=pw -p 5432:5432 postgres:16`.
+File uploads need a `BLOB_READ_WRITE_TOKEN` (create one in the Vercel dashboard
+under Storage → Blob → tokens). See `server/.env.example`.
 
-### Moving to PostgreSQL later
-In `server/prisma/schema.prisma` change `provider = "sqlite"` → `"postgresql"`,
-set `DATABASE_URL` in `server/.env` to your Postgres URL, then
-`npm --prefix server run migrate`. No application code changes.
+### Hosting
+See **[DEPLOY.md](DEPLOY.md)** for the full Vercel + Neon + Blob setup.
 
 ---
 
@@ -120,10 +122,13 @@ cd D:\Claude-Projects\CRMgold
 # 1. install everything (root + server + client)
 npm run install:all
 
-# 2. copy the server env file
+# 2. copy the server env file, then fill in DATABASE_URL / DIRECT_URL / JWT_SECRET
+#    / BLOB_READ_WRITE_TOKEN  (see server/.env.example)
 copy server\.env.example server\.env      # PowerShell: cp server\.env.example server\.env
 
-# 3. create the SQLite database + seed admin, headers and demo data
+# 3. create the schema + seed admin, headers and demo data
+#    first time:            npm --prefix server exec -- prisma migrate dev --name init
+#    after that / on a peer machine:
 npm run setup
 
 # 4. start API (:4000) and web app (:5173) together

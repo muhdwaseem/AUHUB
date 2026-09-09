@@ -34,3 +34,6 @@ thisisthecurrent.png
 
 # gstack local tooling state
 .gstack/
+
+# Vercel CLI local link
+.vercel
