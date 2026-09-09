@@ -71,15 +71,15 @@ export default function Categories() {
       <Card>
         <div className="divide-y divide-graphite-50">
           {data?.map((c) => (
-            <div key={c.id} className="flex items-center justify-between px-5 py-3.5">
-              <div className="flex items-center gap-2.5">
+            <div key={c.id} className="flex items-center justify-between gap-2 px-3.5 py-3.5 sm:px-5">
+              <div className="flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1">
                 <span className="text-sm font-medium text-graphite-800">{c.name}</span>
                 {c.isDefault && <Badge tone="gold">built-in</Badge>}
                 <span className="text-xs text-graphite-400">
                   {c.expenseCount} expense{c.expenseCount === 1 ? "" : "s"}
                 </span>
               </div>
-              <div className="flex gap-1">
+              <div className="flex flex-none gap-1">
                 <button
                   onClick={() => openEdit(c)}
                   className="flex h-11 w-11 items-center justify-center rounded-md text-graphite-400 hover:bg-graphite-100 hover:text-graphite-700"

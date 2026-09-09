@@ -178,7 +178,48 @@ export default function PortalDashboard() {
             Clear
           </Button>
         </div>
-        <div className="overflow-x-auto">
+        {/* mobile: card per day */}
+        <div className="divide-y divide-ink-700 sm:hidden">
+          {data.daily.length === 0 && (
+            <p className="px-4 py-10 text-center text-sm text-graphite-400">
+              No activity in this period yet.
+            </p>
+          )}
+          {data.daily.map((d) => (
+            <div key={d.date!} className="px-3.5 py-3">
+              <div className="flex items-baseline justify-between gap-2">
+                <span className="font-medium text-graphite-700">{shortDate(d.date)}</span>
+                <span
+                  className={`tnum font-semibold ${d.myNetShare >= 0 ? "text-accent-text" : "text-negative"}`}
+                >
+                  {money(d.myNetShare)}
+                  <span className="ml-1 text-[10px] font-normal text-graphite-400">my share</span>
+                </span>
+              </div>
+              <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-[11.5px] text-graphite-500">
+                <span>
+                  Book net{" "}
+                  <b className={`tnum ${d.netProfit >= 0 ? "text-graphite-700" : "text-negative"}`}>
+                    {money(d.netProfit)}
+                  </b>
+                </span>
+                {d.netLoss > 0 && (
+                  <span>
+                    Book loss <b className="tnum text-negative">{money(d.netLoss)}</b>
+                  </span>
+                )}
+                {d.myNetLossShare > 0 && (
+                  <span>
+                    My loss share <b className="tnum text-negative">{money(d.myNetLossShare)}</b>
+                  </span>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* desktop: table */}
+        <div className="hidden overflow-x-auto sm:block">
           <table className="w-full min-w-[560px] text-sm">
             <thead>
               <tr className="border-b border-ink-700 text-left text-xs uppercase tracking-wide text-graphite-400">
