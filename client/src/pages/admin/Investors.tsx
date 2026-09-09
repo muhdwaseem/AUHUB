@@ -166,11 +166,25 @@ export default function Investors() {
       <Badge tone="neutral">none</Badge>
     );
 
+  const nameLink = (inv: Investor) => (
+    <button
+      onClick={() => navigate(`/admin/view/${inv.id}`)}
+      className="text-left font-medium text-graphite-800 underline-offset-2 hover:text-accent-text hover:underline"
+      title={`Open ${inv.name}'s portal`}
+    >
+      {inv.name}
+    </button>
+  );
+
   const rowActions = (inv: Investor) => (
-    <div className="flex justify-end gap-1">
-      <IconBtn title="View investor portal" onClick={() => navigate(`/admin/view/${inv.id}`)}>
-        <Eye size={15} />
-      </IconBtn>
+    <div className="flex flex-wrap justify-end gap-1">
+      <button
+        onClick={() => navigate(`/admin/view/${inv.id}`)}
+        title="View investor portal"
+        className="mr-1 inline-flex h-9 items-center gap-1.5 rounded-full border border-graphite-200 bg-ink-800 px-3 text-[12px] font-semibold text-graphite-700 transition-colors hover:border-gold-lo hover:text-graphite-900"
+      >
+        <Eye size={13} /> View
+      </button>
       <IconBtn title="Edit" onClick={() => openEdit(inv)}>
         <Pencil size={15} />
       </IconBtn>
@@ -237,7 +251,7 @@ export default function Investors() {
             <div key={inv.id} className="px-3.5 py-3.5">
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
-                  <div className="font-medium text-graphite-800">{inv.name}</div>
+                  <div>{nameLink(inv)}</div>
                   <div className="text-xs text-graphite-400">
                     Joined {shortDate(inv.joinedAt)}
                     {inv.status === "INACTIVE" && (
@@ -286,7 +300,7 @@ export default function Investors() {
               {data?.investors.map((inv) => (
                 <tr key={inv.id} className="hover:bg-graphite-50/60">
                   <td className="px-5 py-3">
-                    <div className="font-medium text-graphite-800">{inv.name}</div>
+                    <div>{nameLink(inv)}</div>
                     <div className="text-xs text-graphite-400">
                       Joined {shortDate(inv.joinedAt)}
                       {inv.status === "INACTIVE" && (
