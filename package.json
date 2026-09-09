@@ -2,6 +2,7 @@
   "name": "crmgold",
   "private": true,
   "version": "1.0.0",
+  "type": "module",
   "description": "CRM for a gold trading business — investors, expenses, profit/loss, per-investor profit split.",
   "scripts": {
     "install:all": "npm install && npm --prefix server install && npm --prefix client install",
