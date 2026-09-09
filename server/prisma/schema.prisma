@@ -1,8 +1,7 @@
-// CRMgold data model — PostgreSQL.
-// DATABASE_URL is the pooled connection (used by the app / serverless functions);
-// DIRECT_URL is the direct connection (used only by `prisma migrate`).
-// Local dev needs a Postgres URL too — a free Neon database works, or run
-// `docker run -e POSTGRES_PASSWORD=pw -p 5432:5432 postgres:16`.
+// CRMgold data model — PostgreSQL (Supabase).
+// DATABASE_URL is the pooled connection (transaction pooler, port 6543, used by
+// the app / serverless functions); DIRECT_URL is the session pooler (port 5432,
+// used only by `prisma migrate`). See DEPLOY.md / server/.env.example.
 
 generator client {
   provider      = "prisma-client-js"

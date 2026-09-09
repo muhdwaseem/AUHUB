@@ -18,19 +18,19 @@ Built from the handwritten brief in `1.jpeg`.
 | **Frontend** | React 18 + Vite + TypeScript | Fast dev server, tiny build, familiar component model |
 | **Styling / UI** | Tailwind CSS v4 + `lucide-react` icons + Recharts | Clean, consistent look with almost no custom CSS; Recharts for the profit trend chart |
 | **Backend** | Node.js + Express + TypeScript (`tsx` locally; one serverless function on Vercel) | Small, explicit REST API; easy to read and extend |
-| **Database** | **PostgreSQL** via **Prisma ORM** | A managed Postgres (Neon's free tier works for both local dev and production) |
+| **Database** | **PostgreSQL** via **Prisma ORM** | A managed Postgres (Supabase's free tier, used for both local dev and production) |
 | **File uploads** | `multer` (in-memory) → **Vercel Blob** | Payment slips / invoices as image or PDF, up to 15 MB each |
 | **Auth** | JWT (12 h) + bcrypt password hashing | Stateless, role-based (`ADMIN` / `INVESTOR`) |
 
 ### Local database
-Local dev needs a Postgres URL. Easiest is a free [Neon](https://neon.tech)
-database (use the same one for `DATABASE_URL` and `DIRECT_URL`), or run one in
-Docker: `docker run -e POSTGRES_PASSWORD=pw -p 5432:5432 postgres:16`.
-File uploads need a `BLOB_READ_WRITE_TOKEN` (create one in the Vercel dashboard
-under Storage → Blob → tokens). See `server/.env.example`.
+Local dev needs a Postgres URL. Create a free [Supabase](https://supabase.com)
+project and take the **transaction pooler** URI (port 6543, add
+`?pgbouncer=true&connection_limit=1`) as `DATABASE_URL` and the **session pooler**
+URI (port 5432) as `DIRECT_URL`. File uploads need a `BLOB_READ_WRITE_TOKEN`
+(Vercel dashboard → Storage → Blob → tokens). See `server/.env.example`.
 
 ### Hosting
-See **[DEPLOY.md](DEPLOY.md)** for the full Vercel + Neon + Blob setup.
+See **[DEPLOY.md](DEPLOY.md)** for the full Vercel + Supabase + Blob setup.
 
 ---
 
