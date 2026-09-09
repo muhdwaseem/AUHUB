@@ -1,4 +1,5 @@
 import { Router } from "express";
+import rateLimit from "express-rate-limit";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { prisma } from "../lib/prisma.js";
@@ -6,12 +7,24 @@ import { authRequired, signToken } from "../lib/auth.js";
 
 export const authRouter = Router();
 
+// Best-effort brute-force slowdown on sign-in. On serverless the counter lives
+// in per-instance memory (no shared store), so it's a speed bump under spread
+// load rather than a hard lock — still worth having. Only failed attempts count.
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 10,
+  skipSuccessfulRequests: true,
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+  message: { error: "Too many sign-in attempts. Wait a few minutes and try again." },
+});
+
 const loginSchema = z.object({
   username: z.string().min(1),
   password: z.string().min(1),
 });
 
-authRouter.post("/login", async (req, res) => {
+authRouter.post("/login", loginLimiter, async (req, res) => {
   const parsed = loginSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "Username and password are required" });
 
@@ -65,13 +78,15 @@ authRouter.get("/me", authRequired, async (req, res) => {
 
 const changePasswordSchema = z.object({
   currentPassword: z.string().min(1),
-  newPassword: z.string().min(6),
+  newPassword: z.string().min(12),
 });
 
 authRouter.post("/change-password", authRequired, async (req, res) => {
   const parsed = changePasswordSchema.safeParse(req.body);
   if (!parsed.success)
-    return res.status(400).json({ error: "New password must be at least 6 characters" });
+    return res.status(400).json({ error: "New password must be at least 12 characters" });
+  if (parsed.data.newPassword === parsed.data.currentPassword)
+    return res.status(400).json({ error: "New password must be different from the current one" });
   const user = await prisma.user.findUnique({ where: { id: req.auth!.userId } });
   if (!user) return res.status(404).json({ error: "User not found" });
   const ok = await bcrypt.compare(parsed.data.currentPassword, user.password);

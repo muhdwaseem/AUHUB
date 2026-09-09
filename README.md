@@ -37,7 +37,7 @@ See **[DEPLOY.md](DEPLOY.md)** for the full Vercel + Supabase + Blob setup.
 ## 2. How it works (the process)
 
 ### Roles
-- **Admin** (`admin` / `admin123` after seeding) — full control of everything.
+- **Admin** (`admin`; password printed once by the seed) — full control of everything.
 - **Investor** — a **read-only** portal. Auto-created when the admin adds an
   investor. Sees the whole book's totals and *all* losses, but for **profit**
   only sees the aggregate total **and their own share** — never another
@@ -139,9 +139,12 @@ Open **http://localhost:5173**.
 
 | Account | Username | Password |
 |---|---|---|
-| Admin | `admin` | `admin123` |
+| Admin | `admin` | printed once by `npm run setup` (random, or set `SEED_ADMIN_PASSWORD`) |
 | Demo investor (60%) | printed by `npm run setup` | printed by `npm run setup` |
 | Demo investor (40%) | printed by `npm run setup` | printed by `npm run setup` |
+
+Change the admin password from inside the app (icon rail → **Change password**).
+Re-running the seed never overwrites an existing password.
 
 > The seed also loads a few sample gold trades and expenses so the dashboards
 > aren't empty. Real use: delete the demo investors and start adding your own

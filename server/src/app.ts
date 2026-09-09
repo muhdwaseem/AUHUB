@@ -15,6 +15,10 @@ import { filesRouter } from "./routes/files.js";
 
 const app = express();
 
+// Vercel runs the function behind its edge proxy; trust one hop so rate-limiting
+// and req.ip see the real client address, not the proxy's.
+app.set("trust proxy", 1);
+
 // On Vercel the client is served from the same origin, so CORS is a no-op there.
 // For a split deploy (client elsewhere) set CORS_ORIGIN to a comma-separated list.
 const ORIGINS = (process.env.CORS_ORIGIN || "http://localhost:5173")

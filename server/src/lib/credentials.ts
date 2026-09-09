@@ -7,6 +7,7 @@ const passAlphabet =
 
 const idNanoid = customAlphabet(idAlphabet, 5);
 const passNanoid = customAlphabet(passAlphabet, 10);
+const strongNanoid = customAlphabet(passAlphabet, 20);
 
 /** Build a login id from the investor's name plus a short random suffix. */
 export function makeUsername(name: string): string {
@@ -19,4 +20,10 @@ export function makeUsername(name: string): string {
 
 export function makePassword(): string {
   return passNanoid();
+}
+
+/** A long random password for non-interactive provisioning (e.g. seeding the
+ * admin when SEED_ADMIN_PASSWORD isn't given). 20 unambiguous alphanumerics. */
+export function makeStrongPassword(): string {
+  return strongNanoid();
 }

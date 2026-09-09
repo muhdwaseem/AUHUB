@@ -41,8 +41,14 @@ serverless function** (`api/index.ts`). Storage is **Supabase Postgres** and
 cd server
 cp .env.example .env          # then paste the real DATABASE_URL / DIRECT_URL / JWT_SECRET
 npx prisma migrate dev --name init      # creates the Postgres migration + applies it to Supabase
-npm run seed                            # creates the admin (admin / admin123) + demo data
+npm run seed                            # creates the admin + default expense headers + demo data
 ```
+
+The seed creates the `admin` account with a **random password that it prints once** —
+copy it from the output. To choose your own instead, set `SEED_ADMIN_PASSWORD`
+(min 12 chars) before running: `SEED_ADMIN_PASSWORD='…' npm run seed`. Re-running
+the seed never changes an existing admin's password, so change it afterwards from
+the app (icon rail → **Change password**) and you're free to re-seed anytime.
 
 Commit the generated `server/prisma/migrations/` folder — Vercel replays it on deploy.
 (Re-run `npx prisma migrate dev` locally whenever you change `schema.prisma`, then commit.)

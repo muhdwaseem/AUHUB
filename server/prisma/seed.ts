@@ -1,24 +1,46 @@
 import "dotenv/config";
 import bcrypt from "bcryptjs";
 import { PrismaClient } from "../src/generated/prisma/index.js";
-import { makePassword, makeUsername } from "../src/lib/credentials.js";
+import { makePassword, makeStrongPassword, makeUsername } from "../src/lib/credentials.js";
 
 const prisma = new PrismaClient();
 
 const ADMIN_USERNAME = process.env.SEED_ADMIN_USERNAME || "admin";
-const ADMIN_PASSWORD = process.env.SEED_ADMIN_PASSWORD || "admin123";
 
 const DEFAULT_CATEGORIES = ["Flight", "Total Travel", "Visa", "Hotel Bookings"];
 
 async function main() {
   // --- Admin ---
-  const adminHash = await bcrypt.hash(ADMIN_PASSWORD, 10);
-  await prisma.user.upsert({
-    where: { username: ADMIN_USERNAME },
-    update: { password: adminHash, role: "ADMIN", status: "ACTIVE" },
-    create: { username: ADMIN_USERNAME, password: adminHash, role: "ADMIN", status: "ACTIVE" },
-  });
-  console.log(`Admin ready  ->  username: ${ADMIN_USERNAME}  password: ${ADMIN_PASSWORD}`);
+  // Never resets an existing admin's password (re-running the seed is safe).
+  // On first creation, use SEED_ADMIN_PASSWORD if given, otherwise a random one
+  // printed once here — so a fresh deploy is never left on a known credential.
+  const existingAdmin = await prisma.user.findUnique({ where: { username: ADMIN_USERNAME } });
+  if (existingAdmin) {
+    await prisma.user.update({
+      where: { id: existingAdmin.id },
+      data: { role: "ADMIN", status: "ACTIVE" },
+    });
+    console.log(`Admin "${ADMIN_USERNAME}" already exists — password left unchanged`);
+  } else {
+    const chosen = process.env.SEED_ADMIN_PASSWORD;
+    const adminPassword = chosen || makeStrongPassword();
+    await prisma.user.create({
+      data: {
+        username: ADMIN_USERNAME,
+        password: await bcrypt.hash(adminPassword, 10),
+        role: "ADMIN",
+        status: "ACTIVE",
+      },
+    });
+    const bar = "=".repeat(64);
+    console.log(bar);
+    console.log("  ADMIN ACCOUNT CREATED");
+    console.log(`  username: ${ADMIN_USERNAME}`);
+    console.log(`  password: ${adminPassword}`);
+    if (!chosen)
+      console.log("  (random — set SEED_ADMIN_PASSWORD to pick your own. Not shown again.)");
+    console.log(bar);
+  }
 
   // --- Expense headers ---
   for (const name of DEFAULT_CATEGORIES) {

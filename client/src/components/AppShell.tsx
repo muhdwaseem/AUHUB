@@ -7,12 +7,14 @@ import {
   ReceiptText,
   ListChecks,
   TrendingUp,
+  KeyRound,
   LogOut,
   Sun,
   Moon,
 } from "lucide-react";
 import { useAuth } from "../auth";
 import { useTheme } from "../theme";
+import { ChangePasswordModal } from "./ChangePasswordModal";
 
 export interface NavItem {
   to: string;
@@ -39,6 +41,7 @@ export function AppShell({ nav, children }: { nav: NavItem[]; children: ReactNod
   const location = useLocation();
   const { theme, toggleTheme } = useTheme();
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [pwOpen, setPwOpen] = useState(false);
 
   useEffect(() => setDrawerOpen(false), [location.pathname]);
 
@@ -92,6 +95,16 @@ export function AppShell({ nav, children }: { nav: NavItem[]; children: ReactNod
             </span>
           </button>
           <button
+            onClick={() => setPwOpen(true)}
+            aria-label="Change password"
+            className="group relative grid h-10 w-10 place-items-center rounded-full text-graphite-500 transition-[transform,background-color,color] duration-150 ease-out active:scale-90 hover:bg-ink-900 hover:text-graphite-900 sm:h-11 sm:w-11"
+          >
+            <KeyRound size={18} />
+            <span className="pointer-events-none absolute left-[52px] top-1/2 z-20 -translate-y-1/2 scale-95 whitespace-nowrap rounded-lg border border-graphite-200 px-2.5 py-1.5 text-[11px] font-semibold uppercase tracking-[0.06em] text-graphite-900 opacity-0 transition-all [background:color-mix(in_srgb,var(--wall)_88%,transparent)] [backdrop-filter:blur(8px)] group-hover:scale-100 group-hover:opacity-100">
+              Change password
+            </span>
+          </button>
+          <button
             onClick={() => {
               logout();
               navigate("/login");
@@ -118,6 +131,7 @@ export function AppShell({ nav, children }: { nav: NavItem[]; children: ReactNod
         {children}
       </div>
       </div>
+      <ChangePasswordModal open={pwOpen} onClose={() => setPwOpen(false)} />
     </>
   );
 }
