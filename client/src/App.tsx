@@ -8,6 +8,7 @@ import Investors from "./pages/admin/Investors";
 import Gold from "./pages/admin/Gold";
 import Expenses from "./pages/admin/Expenses";
 import Categories from "./pages/admin/Categories";
+import Currencies from "./pages/admin/Currencies";
 import Reports from "./pages/admin/Reports";
 import PortalDashboard from "./pages/portal/PortalDashboard";
 
@@ -17,6 +18,7 @@ const adminNav: NavItem[] = [
   { to: "/admin/gold", label: "Gold Trades" },
   { to: "/admin/expenses", label: "Expenses" },
   { to: "/admin/categories", label: "Expense Headers" },
+  { to: "/admin/currencies", label: "Currencies" },
   { to: "/admin/reports", label: "Profit & Loss" },
 ];
 
@@ -33,6 +35,7 @@ function AdminArea() {
           <Route path="gold" element={<Gold />} />
           <Route path="expenses" element={<Expenses />} />
           <Route path="categories" element={<Categories />} />
+          <Route path="currencies" element={<Currencies />} />
           <Route path="reports" element={<Reports />} />
           <Route path="view/:investorId" element={<PortalDashboard />} />
           <Route path="*" element={<Navigate to="/admin" replace />} />

@@ -9,6 +9,13 @@ const ADMIN_USERNAME = process.env.SEED_ADMIN_USERNAME || "admin";
 
 const DEFAULT_CATEGORIES = ["Flight", "Total Travel", "Visa", "Hotel Bookings"];
 
+const CURRENCIES = [
+  { code: "AED", symbol: "AED", decimals: 2, isBase: true },
+  { code: "USD", symbol: "$", decimals: 2, isBase: false },
+  { code: "THB", symbol: "฿", decimals: 2, isBase: false },
+  { code: "IDR", symbol: "Rp", decimals: 0, isBase: false },
+];
+
 async function main() {
   // --- Admin ---
   // Never resets an existing admin's password (re-running the seed is safe).
@@ -51,6 +58,16 @@ async function main() {
     });
   }
   console.log(`Seeded ${DEFAULT_CATEGORIES.length} default expense headers`);
+
+  // --- Currencies ---
+  for (const c of CURRENCIES) {
+    await prisma.currency.upsert({
+      where: { code: c.code },
+      update: { symbol: c.symbol, decimals: c.decimals }, // never flip isBase on an existing row
+      create: c,
+    });
+  }
+  console.log(`Seeded ${CURRENCIES.length} currencies (base: AED)`);
 
   // --- Demo data (only if the book is empty) ---
   const investorCount = await prisma.investor.count();

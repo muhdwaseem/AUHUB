@@ -12,10 +12,12 @@ import {
   Field,
   Input,
   Modal,
+  Select,
   Spinner,
   Textarea,
 } from "../../components/ui";
-import { money, grams, shortDate, dateInput } from "../../format";
+import { grams, shortDate, dateInput } from "../../format";
+import { useCurrency } from "../../currency";
 
 interface ListResp {
   transactions: GoldTxn[];
@@ -27,11 +29,14 @@ const blank = {
   quality: "24K",
   quantityGrams: "",
   ratePerGram: "",
+  currencyCode: "AED",
+  fxRate: "1",
   counterparty: "",
   notes: "",
 };
 
 export default function Gold() {
+  const { currencies, base, fmt } = useCurrency();
   const [typeFilter, setTypeFilter] = useState("");
   const { data, loading, error, reload } = useFetch<ListResp>(
     `/gold${typeFilter ? `?type=${typeFilter}` : ""}`,
@@ -57,6 +62,8 @@ export default function Gold() {
       quality: t.quality,
       quantityGrams: String(t.quantityGrams),
       ratePerGram: String(t.ratePerGram),
+      currencyCode: t.currencyCode ?? "AED",
+      fxRate: String(t.fxRate ?? 1),
       counterparty: t.counterparty ?? "",
       notes: t.notes ?? "",
     });
@@ -78,6 +85,8 @@ export default function Gold() {
         quality: form.quality,
         quantityGrams: Number(form.quantityGrams),
         ratePerGram: Number(form.ratePerGram),
+        currencyCode: form.currencyCode,
+        fxRate: form.currencyCode === base.code ? 1 : Number(form.fxRate || 1),
         counterparty: form.counterparty,
         notes: form.notes,
       };
@@ -178,11 +187,11 @@ export default function Gold() {
                 </div>
                 <div>
                   <div className="text-[10px] uppercase tracking-wide text-graphite-400">Rate/g</div>
-                  <b className="tnum font-medium">{money(t.ratePerGram)}</b>
+                  <b className="tnum font-medium">{fmt(t.ratePerGram, t.currencyCode)}</b>
                 </div>
                 <div className="text-right">
                   <div className="text-[10px] uppercase tracking-wide text-graphite-400">Total</div>
-                  <b className="tnum font-medium text-graphite-900">{money(t.totalAmount)}</b>
+                  <b className="tnum font-medium text-graphite-900">{fmt(t.totalAmount, t.currencyCode)}</b>
                 </div>
               </div>
               {t.counterparty && (
@@ -219,8 +228,15 @@ export default function Gold() {
                   </td>
                   <td className="px-5 py-3 font-medium text-graphite-700">{t.quality}</td>
                   <td className="px-5 py-3 text-right tnum">{grams(t.quantityGrams)}</td>
-                  <td className="px-5 py-3 text-right tnum">{money(t.ratePerGram)}</td>
-                  <td className="px-5 py-3 text-right tnum font-medium">{money(t.totalAmount)}</td>
+                  <td className="px-5 py-3 text-right tnum">{fmt(t.ratePerGram, t.currencyCode)}</td>
+                  <td className="px-5 py-3 text-right">
+                    <div className="tnum font-medium">{fmt(t.totalAmount, t.currencyCode)}</div>
+                    {t.currencyCode !== base.code && (
+                      <div className="text-[11px] tnum text-graphite-400">
+                        ≈ {fmt(t.totalAmount * t.fxRate)}
+                      </div>
+                    )}
+                  </td>
                   <td className="px-5 py-3 text-xs text-graphite-500">{t.counterparty || "—"}</td>
                   <td className="px-5 py-3">{rowActions(t)}</td>
                 </tr>
@@ -283,8 +299,48 @@ export default function Gold() {
               />
             </Field>
           </div>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <Field label="Currency" required>
+              <Select
+                value={form.currencyCode}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    currencyCode: e.target.value,
+                    fxRate: e.target.value === base.code ? "1" : form.fxRate,
+                  })
+                }
+              >
+                {currencies.map((c) => (
+                  <option key={c.code} value={c.code}>
+                    {c.code} {c.symbol !== c.code ? `(${c.symbol})` : ""}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+            {form.currencyCode !== base.code && (
+              <Field
+                label={`1 ${form.currencyCode} = ? ${base.code}`}
+                required
+                hint="Exchange rate on the trade date"
+              >
+                <Input
+                  type="number"
+                  step="0.0001"
+                  min="0"
+                  value={form.fxRate}
+                  onChange={(e) => setForm({ ...form, fxRate: e.target.value })}
+                />
+              </Field>
+            )}
+          </div>
           <div className="rounded-lg bg-gold-500/10 px-3 py-2 text-sm text-accent-text">
-            Transaction total: <strong className="tnum">{money(preview)}</strong>
+            Transaction total: <strong className="tnum">{fmt(preview, form.currencyCode)}</strong>
+            {form.currencyCode !== base.code && Number(form.fxRate) > 0 && (
+              <span className="ml-1 text-graphite-500">
+                ≈ {fmt(preview * Number(form.fxRate))}
+              </span>
+            )}
           </div>
           <Field label="Counterparty">
             <Input

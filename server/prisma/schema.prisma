@@ -17,6 +17,18 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
+/// A currency the business trades or spends in. Every trade/expense/capital
+/// amount is stored in that record's own currency; `fxRate` converts it to the
+/// base currency (isBase = true) for all reporting: amount_in_base = amount * fxRate.
+model Currency {
+  id        String   @id @default(cuid())
+  code      String   @unique // "AED", "USD", "THB", "IDR", …
+  symbol    String // "AED", "$", "฿", "Rp"
+  decimals  Int      @default(2) // IDR = 0
+  isBase    Boolean  @default(false) // exactly one; the reporting currency
+  createdAt DateTime @default(now())
+}
+
 /// Login accounts. One ADMIN (seeded) plus one auto-created account per investor.
 model User {
   id         String    @id @default(cuid())
@@ -37,7 +49,9 @@ model Investor {
   email           String?
   phone           String?
   sharePercentage Float    @default(0) // 0 - 100
-  capitalInvested Float    @default(0) // informational
+  capitalInvested Float    @default(0) // informational, in `currencyCode`
+  currencyCode    String   @default("AED")
+  fxRate          Float    @default(1) // capitalInvested * fxRate = capital in base currency
   status          String   @default("ACTIVE") // ACTIVE | INACTIVE
   notes           String?
   joinedAt        DateTime @default(now())
@@ -64,11 +78,13 @@ model ExpenseCategory {
 }
 
 model Expense {
-  id          String              @id @default(cuid())
-  category    ExpenseCategory     @relation(fields: [categoryId], references: [id])
-  categoryId  String
-  amount      Float
-  date        DateTime
+  id           String          @id @default(cuid())
+  category     ExpenseCategory @relation(fields: [categoryId], references: [id])
+  categoryId   String
+  amount       Float // in `currencyCode`
+  currencyCode String          @default("AED")
+  fxRate       Float           @default(1) // amount * fxRate = amount in base currency
+  date         DateTime
   description String?
   createdAt   DateTime            @default(now())
   updatedAt   DateTime            @updatedAt
@@ -101,8 +117,10 @@ model GoldTransaction {
   date          DateTime
   quality       String // e.g. "24K", "22K", "999", "916"
   quantityGrams Float
-  ratePerGram   Float
-  totalAmount   Float // quantityGrams * ratePerGram (stored for reporting)
+  ratePerGram   Float // in `currencyCode`
+  totalAmount   Float // quantityGrams * ratePerGram, in `currencyCode`
+  currencyCode  String  @default("AED")
+  fxRate        Float   @default(1) // ratePerGram/totalAmount * fxRate = value in base currency
   counterparty  String? // supplier / buyer name
   notes         String?
   createdAt     DateTime @default(now())

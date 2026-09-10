@@ -12,11 +12,13 @@ import {
   Field,
   Input,
   Modal,
+  Select,
   Spinner,
   Textarea,
 } from "../../components/ui";
 import { AttachmentLink } from "../../components/AttachmentLink";
-import { money, shortDate, dateInput } from "../../format";
+import { shortDate, dateInput } from "../../format";
+import { useCurrency } from "../../currency";
 
 interface ListResp {
   expenses: Expense[];
@@ -29,6 +31,8 @@ interface InvestorsResp {
 const blankForm = {
   categoryId: "",
   amount: "",
+  currencyCode: "AED",
+  fxRate: "1",
   date: dateInput(),
   description: "",
   investorId: "",
@@ -36,6 +40,7 @@ const blankForm = {
 };
 
 export default function Expenses() {
+  const { currencies, base, fmt } = useCurrency();
   const [catFilter, setCatFilter] = useState("");
   const { data: cats } = useFetch<Category[]>("/expense-categories");
   const { data: investorsResp } = useFetch<InvestorsResp>("/investors");
@@ -65,6 +70,8 @@ export default function Expenses() {
     setForm({
       categoryId: e.categoryId,
       amount: String(e.amount),
+      currencyCode: e.currencyCode ?? "AED",
+      fxRate: String(e.fxRate ?? 1),
       date: e.date.slice(0, 10),
       description: e.description ?? "",
       investorId: e.investorId ?? "",
@@ -80,11 +87,14 @@ export default function Expenses() {
     setBusy(true);
     setFormErr("");
     const charged = !!form.investorId && form.chargedToInvestor;
+    const fxRate = form.currencyCode === base.code ? 1 : Number(form.fxRate || 1);
     try {
       if (editing) {
         await api.put(`/expenses/${editing.id}`, {
           categoryId: form.categoryId,
           amount: Number(form.amount),
+          currencyCode: form.currencyCode,
+          fxRate,
           date: form.date,
           description: form.description,
           investorId: form.investorId || null,
@@ -99,6 +109,8 @@ export default function Expenses() {
         const fd = new FormData();
         fd.append("categoryId", form.categoryId);
         fd.append("amount", form.amount);
+        fd.append("currencyCode", form.currencyCode);
+        fd.append("fxRate", String(fxRate));
         fd.append("date", form.date);
         fd.append("description", form.description);
         fd.append("investorId", form.investorId || "");
@@ -116,7 +128,7 @@ export default function Expenses() {
   }
 
   async function removeExpense(e: Expense) {
-    if (!confirm(`Delete this ${money(e.amount)} expense and its attachments?`)) return;
+    if (!confirm(`Delete this ${fmt(e.amount, e.currencyCode)} expense and its attachments?`)) return;
     try {
       await api.delete(`/expenses/${e.id}`);
       reload();
@@ -180,7 +192,7 @@ export default function Expenses() {
         <div className="flex items-center justify-between border-b border-graphite-100 px-3.5 py-2.5 sm:px-5 text-xs text-graphite-500">
           <span>{data?.expenses.length ?? 0} expenses</span>
           <span>
-            Total: <strong className="text-graphite-700">{money(data?.total ?? 0)}</strong>
+            Total: <strong className="text-graphite-700">{fmt(data?.total ?? 0)}</strong>
           </span>
         </div>
         <div className="divide-y divide-graphite-50">
@@ -226,8 +238,15 @@ export default function Expenses() {
                   )}
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="tnum text-sm font-semibold text-graphite-800">
-                    {money(e.amount)}
+                  <span className="text-right">
+                    <span className="tnum block text-sm font-semibold text-graphite-800">
+                      {fmt(e.amount, e.currencyCode)}
+                    </span>
+                    {e.currencyCode !== base.code && (
+                      <span className="tnum block text-[11px] text-graphite-400">
+                        ≈ {fmt(e.amount * e.fxRate)}
+                      </span>
+                    )}
                   </span>
                   <button
                     onClick={() => openEdit(e)}
@@ -283,16 +302,55 @@ export default function Expenses() {
               />
             </Field>
           </div>
-          <Field label="Amount" required>
-            <Input
-              type="number"
-              step="0.01"
-              min="0"
-              value={form.amount}
-              onChange={(e) => setForm({ ...form, amount: e.target.value })}
-              autoFocus
-            />
-          </Field>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <Field label="Amount" required>
+              <Input
+                type="number"
+                step="0.01"
+                min="0"
+                value={form.amount}
+                onChange={(e) => setForm({ ...form, amount: e.target.value })}
+                autoFocus
+              />
+            </Field>
+            <Field label="Currency" required>
+              <Select
+                value={form.currencyCode}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    currencyCode: e.target.value,
+                    fxRate: e.target.value === base.code ? "1" : form.fxRate,
+                  })
+                }
+              >
+                {currencies.map((c) => (
+                  <option key={c.code} value={c.code}>
+                    {c.code} {c.symbol !== c.code ? `(${c.symbol})` : ""}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          </div>
+          {form.currencyCode !== base.code && (
+            <Field
+              label={`1 ${form.currencyCode} = ? ${base.code}`}
+              required
+              hint={
+                Number(form.amount) > 0 && Number(form.fxRate) > 0
+                  ? `≈ ${fmt(Number(form.amount) * Number(form.fxRate))} in ${base.code}`
+                  : "Exchange rate on the expense date"
+              }
+            >
+              <Input
+                type="number"
+                step="0.0001"
+                min="0"
+                value={form.fxRate}
+                onChange={(e) => setForm({ ...form, fxRate: e.target.value })}
+              />
+            </Field>
+          )}
           <Field label="Description">
             <Textarea
               value={form.description}

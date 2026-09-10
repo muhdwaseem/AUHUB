@@ -26,7 +26,8 @@ import {
   Spinner,
   Textarea,
 } from "../../components/ui";
-import { money, pct, shortDate } from "../../format";
+import { pct, shortDate } from "../../format";
+import { useCurrency } from "../../currency";
 
 interface ListResp {
   investors: Investor[];
@@ -39,12 +40,15 @@ const blank = {
   phone: "",
   sharePercentage: "",
   capitalInvested: "",
+  currencyCode: "AED",
+  fxRate: "1",
   notes: "",
   status: "ACTIVE" as "ACTIVE" | "INACTIVE",
 };
 
 export default function Investors() {
   const navigate = useNavigate();
+  const { currencies, base, fmt } = useCurrency();
   const { data, loading, error, reload } = useFetch<ListResp>("/investors");
   // Current P/L per active investor, to show a running balance next to capital.
   const { data: report } = useFetch<ReportSummary>("/reports/summary");
@@ -69,6 +73,8 @@ export default function Investors() {
       phone: inv.phone ?? "",
       sharePercentage: String(inv.sharePercentage),
       capitalInvested: String(inv.capitalInvested),
+      currencyCode: inv.currencyCode ?? "AED",
+      fxRate: String(inv.fxRate ?? 1),
       notes: inv.notes ?? "",
       status: inv.status,
     });
@@ -87,6 +93,8 @@ export default function Investors() {
         phone: form.phone,
         sharePercentage: Number(form.sharePercentage || 0),
         capitalInvested: Number(form.capitalInvested || 0),
+        currencyCode: form.currencyCode,
+        fxRate: form.currencyCode === base.code ? 1 : Number(form.fxRate || 1),
         notes: form.notes,
         status: form.status,
       };
@@ -163,20 +171,21 @@ export default function Investors() {
     (report?.investorSplit ?? []).map((r) => [r.investorId, r.netShare])
   );
 
-  /** Running balance = capital invested + their net profit share to date. */
+  /** Running balance (in the base currency) = capital converted to base + their
+   *  net profit share to date. */
   const balanceLine = (inv: Investor) => {
     if (!report) return null;
     const pl = plById.get(inv.id) ?? 0;
-    const balance = inv.capitalInvested + pl;
+    const balance = inv.capitalInvested * (inv.fxRate ?? 1) + pl;
     return (
       <span className="text-[11px] text-graphite-400">
         Balance{" "}
-        <span className="tnum font-medium text-graphite-700">{money(balance)}</span>
+        <span className="tnum font-medium text-graphite-700">{fmt(balance)}</span>
         {Math.abs(pl) >= 0.01 && (
           <span className={`tnum ${pl > 0 ? "text-positive" : "text-negative"}`}>
             {" "}
             ({pl > 0 ? "+" : "−"}
-            {money(Math.abs(pl))})
+            {fmt(Math.abs(pl))})
           </span>
         )}
       </span>
@@ -297,7 +306,7 @@ export default function Investors() {
                 </div>
                 <div className="text-right">
                   <span className="text-graphite-400">Capital </span>
-                  <b className="tnum font-medium text-graphite-700">{money(inv.capitalInvested)}</b>
+                  <b className="tnum font-medium text-graphite-700">{fmt(inv.capitalInvested, inv.currencyCode)}</b>
                 </div>
                 {report && (
                   <div className="col-span-2 text-right">{balanceLine(inv)}</div>
@@ -350,7 +359,7 @@ export default function Investors() {
                     {pct(inv.sharePercentage)}
                   </td>
                   <td className="px-5 py-3 text-right">
-                    <div className="tnum text-graphite-600">{money(inv.capitalInvested)}</div>
+                    <div className="tnum text-graphite-600">{fmt(inv.capitalInvested, inv.currencyCode)}</div>
                     <div className="mt-0.5">{balanceLine(inv)}</div>
                   </td>
                   <td className="px-5 py-3">
@@ -414,6 +423,41 @@ export default function Investors() {
                 onChange={(e) => setForm({ ...form, capitalInvested: e.target.value })}
               />
             </Field>
+          </div>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <Field label="Capital currency">
+              <select
+                className="w-full rounded-lg border border-ink-600 bg-ink-900 px-3 py-2 text-sm text-graphite-900"
+                value={form.currencyCode}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    currencyCode: e.target.value,
+                    fxRate: e.target.value === base.code ? "1" : form.fxRate,
+                  })
+                }
+              >
+                {currencies.map((c) => (
+                  <option key={c.code} value={c.code}>
+                    {c.code} {c.symbol !== c.code ? `(${c.symbol})` : ""}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            {form.currencyCode !== base.code && (
+              <Field
+                label={`1 ${form.currencyCode} = ? ${base.code}`}
+                hint="Rate used to value capital in the base currency"
+              >
+                <Input
+                  type="number"
+                  step="0.0001"
+                  min="0"
+                  value={form.fxRate}
+                  onChange={(e) => setForm({ ...form, fxRate: e.target.value })}
+                />
+              </Field>
+            )}
           </div>
           {editing && (
             <Field label="Status" hint="Inactive also invalidates the login">

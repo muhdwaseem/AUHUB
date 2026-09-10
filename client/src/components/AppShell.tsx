@@ -6,6 +6,7 @@ import {
   Coins,
   ReceiptText,
   ListChecks,
+  Banknote,
   TrendingUp,
   KeyRound,
   LogOut,
@@ -28,6 +29,7 @@ const NAV_ICONS: Record<string, ReactNode> = {
   "/admin/gold": <Coins size={19} />,
   "/admin/expenses": <ReceiptText size={19} />,
   "/admin/categories": <ListChecks size={19} />,
+  "/admin/currencies": <Banknote size={19} />,
   "/admin/reports": <TrendingUp size={19} />,
   "/portal": <LayoutDashboard size={19} />,
 };

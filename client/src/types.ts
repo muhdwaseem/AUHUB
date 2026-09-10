@@ -59,6 +59,8 @@ export interface Investor {
   phone: string | null;
   sharePercentage: number;
   capitalInvested: number;
+  currencyCode: string;
+  fxRate: number;
   status: "ACTIVE" | "INACTIVE";
   notes: string | null;
   joinedAt: string;
@@ -76,6 +78,8 @@ export interface GoldTxn {
   quantityGrams: number;
   ratePerGram: number;
   totalAmount: number;
+  currencyCode: string;
+  fxRate: number;
   counterparty: string | null;
   notes: string | null;
 }
@@ -93,6 +97,8 @@ export interface Expense {
   categoryId: string;
   categoryName: string;
   amount: number;
+  currencyCode: string;
+  fxRate: number;
   date: string;
   description: string | null;
   createdAt: string;
@@ -141,4 +147,13 @@ export interface PortalSummary {
   overall: PortalPeriod & { buyByQuality: QualityRow[]; sellByQuality: QualityRow[] };
   daily: PortalPeriod[];
   generatedAt: string;
+}
+
+export interface Currency {
+  id: string;
+  code: string;
+  symbol: string;
+  decimals: number;
+  isBase: boolean;
+  createdAt: string;
 }

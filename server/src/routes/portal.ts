@@ -82,17 +82,18 @@ portalRouter.get("/summary", async (req, res) => {
     }),
   ]);
 
+  // Convert every amount to the base currency (fxRate) before the engine runs.
   const report = buildReport(
     txns.map((t) => ({
       type: t.type,
       date: t.date,
       quality: t.quality,
       quantityGrams: t.quantityGrams,
-      ratePerGram: t.ratePerGram,
-      totalAmount: t.totalAmount,
+      ratePerGram: t.ratePerGram * (t.fxRate ?? 1),
+      totalAmount: t.totalAmount * (t.fxRate ?? 1),
     })),
     expenses.map((e) => ({
-      amount: e.amount,
+      amount: e.amount * (e.fxRate ?? 1),
       date: e.date,
       investorId: e.investorId,
       chargedToInvestor: e.chargedToInvestor,

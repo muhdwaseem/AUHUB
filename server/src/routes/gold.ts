@@ -12,9 +12,18 @@ const txnSchema = z.object({
   quality: z.string().min(1, "Quality / purity is required"),
   quantityGrams: z.coerce.number().positive("Quantity must be greater than 0"),
   ratePerGram: z.coerce.number().positive("Rate must be greater than 0"),
+  currencyCode: z.string().trim().toUpperCase().optional(),
+  fxRate: z.coerce.number().positive("FX rate must be greater than 0").optional(),
   counterparty: z.string().optional().or(z.literal("")),
   notes: z.string().optional().or(z.literal("")),
 });
+
+/** Resolve a currency code to its stored row + a sane fxRate (base is always 1). */
+async function resolveCurrency(code: string, fxRate: number) {
+  const cur = await prisma.currency.findUnique({ where: { code } });
+  if (!cur) return null;
+  return { code: cur.code, fxRate: cur.isBase ? 1 : fxRate };
+}
 
 goldRouter.get("/", async (req, res) => {
   const { from, to, type } = req.query as Record<string, string>;
@@ -32,6 +41,8 @@ goldRouter.post("/", async (req, res) => {
   if (!parsed.success)
     return res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Invalid data" });
   const d = parsed.data;
+  const cur = await resolveCurrency(d.currencyCode ?? "AED", d.fxRate ?? 1);
+  if (!cur) return res.status(400).json({ error: `Unknown currency "${d.currencyCode}"` });
   const txn = await prisma.goldTransaction.create({
     data: {
       type: d.type,
@@ -40,6 +51,8 @@ goldRouter.post("/", async (req, res) => {
       quantityGrams: d.quantityGrams,
       ratePerGram: d.ratePerGram,
       totalAmount: Math.round(d.quantityGrams * d.ratePerGram * 100) / 100,
+      currencyCode: cur.code,
+      fxRate: cur.fxRate,
       counterparty: d.counterparty || null,
       notes: d.notes || null,
     },
@@ -56,6 +69,17 @@ goldRouter.put("/:id", async (req, res) => {
   const d = parsed.data;
   const quantityGrams = d.quantityGrams ?? existing.quantityGrams;
   const ratePerGram = d.ratePerGram ?? existing.ratePerGram;
+  let currencyCode: string | undefined;
+  let fxRate: number | undefined;
+  if (d.currencyCode !== undefined || d.fxRate !== undefined) {
+    const cur = await resolveCurrency(
+      d.currencyCode ?? existing.currencyCode,
+      d.fxRate ?? existing.fxRate
+    );
+    if (!cur) return res.status(400).json({ error: `Unknown currency "${d.currencyCode}"` });
+    currencyCode = cur.code;
+    fxRate = cur.fxRate;
+  }
   const txn = await prisma.goldTransaction.update({
     where: { id: req.params.id },
     data: {
@@ -65,6 +89,8 @@ goldRouter.put("/:id", async (req, res) => {
       quantityGrams,
       ratePerGram,
       totalAmount: Math.round(quantityGrams * ratePerGram * 100) / 100,
+      currencyCode,
+      fxRate,
       counterparty: d.counterparty === undefined ? undefined : d.counterparty || null,
       notes: d.notes === undefined ? undefined : d.notes || null,
     },

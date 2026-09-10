@@ -14,9 +14,17 @@ const investorSchema = z.object({
   phone: z.string().optional().or(z.literal("")),
   sharePercentage: z.coerce.number().min(0).max(100),
   capitalInvested: z.coerce.number().min(0).optional(),
+  currencyCode: z.string().trim().toUpperCase().optional(),
+  fxRate: z.coerce.number().positive().optional(),
   notes: z.string().optional().or(z.literal("")),
   status: z.enum(["ACTIVE", "INACTIVE"]).optional(),
 });
+
+async function resolveCurrency(code: string, fxRate: number) {
+  const cur = await prisma.currency.findUnique({ where: { code } });
+  if (!cur) return null;
+  return { code: cur.code, fxRate: cur.isBase ? 1 : fxRate };
+}
 
 function publicInvestor(inv: any) {
   return {
@@ -26,6 +34,8 @@ function publicInvestor(inv: any) {
     phone: inv.phone,
     sharePercentage: inv.sharePercentage,
     capitalInvested: inv.capitalInvested,
+    currencyCode: inv.currencyCode ?? "AED",
+    fxRate: inv.fxRate ?? 1,
     status: inv.status,
     notes: inv.notes,
     joinedAt: inv.joinedAt,
@@ -66,6 +76,8 @@ investorsRouter.post("/", async (req, res) => {
     return res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Invalid data" });
 
   const d = parsed.data;
+  const cur = await resolveCurrency(d.currencyCode ?? "AED", d.fxRate ?? 1);
+  if (!cur) return res.status(400).json({ error: `Unknown currency "${d.currencyCode}"` });
   const username = makeUsername(d.name);
   const password = makePassword();
   const hash = await bcrypt.hash(password, 10);
@@ -77,6 +89,8 @@ investorsRouter.post("/", async (req, res) => {
       phone: d.phone || null,
       sharePercentage: d.sharePercentage,
       capitalInvested: d.capitalInvested ?? 0,
+      currencyCode: cur.code,
+      fxRate: cur.fxRate,
       notes: d.notes || null,
       status: d.status ?? "ACTIVE",
       generatedUsername: username,
@@ -100,6 +114,17 @@ investorsRouter.put("/:id", async (req, res) => {
   if (!existing) return res.status(404).json({ error: "Investor not found" });
 
   const d = parsed.data;
+  let currencyCode: string | undefined;
+  let fxRate: number | undefined;
+  if (d.currencyCode !== undefined || d.fxRate !== undefined) {
+    const cur = await resolveCurrency(
+      d.currencyCode ?? existing.currencyCode,
+      d.fxRate ?? existing.fxRate
+    );
+    if (!cur) return res.status(400).json({ error: `Unknown currency "${d.currencyCode}"` });
+    currencyCode = cur.code;
+    fxRate = cur.fxRate;
+  }
   const inv = await prisma.investor.update({
     where: { id: req.params.id },
     data: {
@@ -108,6 +133,8 @@ investorsRouter.put("/:id", async (req, res) => {
       phone: d.phone === undefined ? undefined : d.phone || null,
       sharePercentage: d.sharePercentage ?? undefined,
       capitalInvested: d.capitalInvested ?? undefined,
+      currencyCode,
+      fxRate,
       notes: d.notes === undefined ? undefined : d.notes || null,
       status: d.status ?? undefined,
     },

@@ -5,12 +5,15 @@ import "./index.css";
 import "./theme";
 import App from "./App";
 import { AuthProvider } from "./auth";
+import { CurrencyProvider } from "./currency";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <BrowserRouter>
       <AuthProvider>
-        <App />
+        <CurrencyProvider>
+          <App />
+        </CurrencyProvider>
       </AuthProvider>
     </BrowserRouter>
   </React.StrictMode>

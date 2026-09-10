@@ -32,17 +32,19 @@ reportsRouter.get("/summary", async (req, res) => {
   const { from, to } = req.query as Record<string, string>;
   const { txns, expenses, investors } = await loadData(from, to);
 
+  // Every amount is stored in its record's own currency; fxRate brings it to the
+  // base currency, which is the only space the accounting engine works in.
   const report = buildReport(
     txns.map((t) => ({
       type: t.type,
       date: t.date,
       quality: t.quality,
       quantityGrams: t.quantityGrams,
-      ratePerGram: t.ratePerGram,
-      totalAmount: t.totalAmount,
+      ratePerGram: t.ratePerGram * (t.fxRate ?? 1),
+      totalAmount: t.totalAmount * (t.fxRate ?? 1),
     })),
     expenses.map((e) => ({
-      amount: e.amount,
+      amount: e.amount * (e.fxRate ?? 1),
       date: e.date,
       categoryName: e.category.name,
       investorId: e.investorId,

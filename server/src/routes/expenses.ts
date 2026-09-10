@@ -20,11 +20,20 @@ const optionalId = z.preprocess(
 const expenseSchema = z.object({
   categoryId: z.string().min(1, "Choose an expense header"),
   amount: z.coerce.number().positive("Amount must be greater than 0"),
+  currencyCode: z.string().trim().toUpperCase().optional(),
+  fxRate: z.coerce.number().positive("FX rate must be greater than 0").optional(),
   date: z.coerce.date(),
   description: z.string().optional().or(z.literal("")),
   investorId: optionalId.optional(),
   chargedToInvestor: boolish.optional(),
 });
+
+/** base = amount * fxRate; the base currency is always fxRate 1. */
+async function resolveCurrency(code: string, fxRate: number) {
+  const cur = await prisma.currency.findUnique({ where: { code } });
+  if (!cur) return null;
+  return { code: cur.code, fxRate: cur.isBase ? 1 : fxRate };
+}
 
 function serialize(e: any) {
   return {
@@ -32,6 +41,8 @@ function serialize(e: any) {
     categoryId: e.categoryId,
     categoryName: e.category?.name,
     amount: e.amount,
+    currencyCode: e.currencyCode ?? "AED",
+    fxRate: e.fxRate ?? 1,
     date: e.date,
     description: e.description,
     createdAt: e.createdAt,
@@ -77,7 +88,8 @@ expensesRouter.get("/", async (req, res) => {
     include: { category: true, attachments: true, investor: true },
     orderBy: { date: "desc" },
   });
-  const total = expenses.reduce((s, e) => s + e.amount, 0);
+  // Total is in the base currency — convert each row by its fxRate first.
+  const total = expenses.reduce((s, e) => s + e.amount * (e.fxRate ?? 1), 0);
   res.json({ expenses: expenses.map(serialize), total });
 });
 
@@ -95,12 +107,17 @@ expensesRouter.post("/", upload.array("files", 10), async (req, res) => {
   );
   if (linkErr) return res.status(400).json({ error: linkErr });
 
+  const cur = await resolveCurrency(parsed.data.currencyCode ?? "AED", parsed.data.fxRate ?? 1);
+  if (!cur) return res.status(400).json({ error: `Unknown currency "${parsed.data.currencyCode}"` });
+
   const files = (req.files as Express.Multer.File[]) ?? [];
   const stored = await Promise.all(files.map(putAttachment));
   const expense = await prisma.expense.create({
     data: {
       categoryId: parsed.data.categoryId,
       amount: parsed.data.amount,
+      currencyCode: cur.code,
+      fxRate: cur.fxRate,
       date: parsed.data.date,
       description: parsed.data.description || null,
       investorId: parsed.data.investorId ?? null,
@@ -137,11 +154,25 @@ expensesRouter.put("/:id", async (req, res) => {
   const linkErr = await validateInvestorLink(nextInvestorId, nextCharged);
   if (linkErr) return res.status(400).json({ error: linkErr });
 
+  let currencyCode: string | undefined;
+  let fxRate: number | undefined;
+  if (d.currencyCode !== undefined || d.fxRate !== undefined) {
+    const cur = await resolveCurrency(
+      d.currencyCode ?? existing.currencyCode,
+      d.fxRate ?? existing.fxRate
+    );
+    if (!cur) return res.status(400).json({ error: `Unknown currency "${d.currencyCode}"` });
+    currencyCode = cur.code;
+    fxRate = cur.fxRate;
+  }
+
   const expense = await prisma.expense.update({
     where: { id: req.params.id },
     data: {
       categoryId: d.categoryId ?? undefined,
       amount: d.amount ?? undefined,
+      currencyCode,
+      fxRate,
       date: d.date ?? undefined,
       description: d.description === undefined ? undefined : d.description || null,
       investorId: d.investorId === undefined ? undefined : d.investorId,
