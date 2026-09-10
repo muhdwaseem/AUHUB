@@ -75,6 +75,13 @@ export interface PeriodSummary {
   sellByQuality: QualityBreakdownRow[];
 }
 
+export interface PartnerShareRow {
+  name: string;
+  role: string | null;
+  percentage: number; // of the investor's net share
+  share: number; // netShare * percentage / 100 (negative on a loss)
+}
+
 export interface InvestorSplitRow {
   investorId: string;
   name: string;
@@ -84,6 +91,14 @@ export interface InvestorSplitRow {
   chargedExpenses: number; // expenses charged directly to them
   netShare: number; // commonNetProfit * frac - chargedExpenses
   netLossShare: number;
+  /** Second-level split of this investor's net share. Empty = investor keeps 100%. */
+  partnerSplit: PartnerShareRow[];
+}
+
+export interface PartnerInput {
+  name: string;
+  role?: string | null;
+  percentage: number;
 }
 
 const round = (n: number, dp = 2) => {
@@ -233,7 +248,13 @@ export function buildReport(txns: TxnInput[], expenses: ExpenseInput[]): FullRep
 
 export function investorSplit(
   summary: PeriodSummary,
-  investors: { id: string; name: string; sharePercentage: number; status: string }[]
+  investors: {
+    id: string;
+    name: string;
+    sharePercentage: number;
+    status: string;
+    partners?: PartnerInput[];
+  }[]
 ): InvestorSplitRow[] {
   return investors
     .filter((i) => i.status === "ACTIVE")
@@ -241,6 +262,18 @@ export function investorSplit(
       const frac = (i.sharePercentage || 0) / 100;
       const charged = round(summary.chargedByInvestor[i.id] ?? 0);
       const netShare = round(summary.commonNetProfit * frac - charged);
+      // Second level: divide the investor's net share among their partners.
+      // Last partner absorbs the rounding remainder so the parts always re-sum.
+      const partners = i.partners ?? [];
+      let allocated = 0;
+      const partnerSplit: PartnerShareRow[] = partners.map((p, idx) => {
+        const isLast = idx === partners.length - 1;
+        const share = isLast
+          ? round(netShare - allocated)
+          : round((netShare * (p.percentage || 0)) / 100);
+        allocated = round(allocated + share);
+        return { name: p.name, role: p.role ?? null, percentage: p.percentage || 0, share };
+      });
       return {
         investorId: i.id,
         name: i.name,
@@ -250,6 +283,7 @@ export function investorSplit(
         chargedExpenses: charged,
         netShare,
         netLossShare: netShare < 0 ? round(-netShare) : 0,
+        partnerSplit,
       };
     });
 }

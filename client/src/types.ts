@@ -29,6 +29,13 @@ export interface PeriodSummary {
   sellByQuality: QualityRow[];
 }
 
+export interface PartnerShareRow {
+  name: string;
+  role: string | null;
+  percentage: number;
+  share: number;
+}
+
 export interface InvestorSplitRow {
   investorId: string;
   name: string;
@@ -38,6 +45,14 @@ export interface InvestorSplitRow {
   chargedExpenses: number;
   netShare: number;
   netLossShare: number;
+  partnerSplit: PartnerShareRow[];
+}
+
+export interface ProfitPartner {
+  id: string;
+  name: string;
+  role: string | null;
+  percentage: number;
 }
 
 export interface ReportSummary {
@@ -61,6 +76,7 @@ export interface Investor {
   capitalInvested: number;
   currencyCode: string;
   fxRate: number;
+  partners: ProfitPartner[];
   status: "ACTIVE" | "INACTIVE";
   notes: string | null;
   joinedAt: string;
@@ -144,7 +160,11 @@ export interface PortalSummary {
     capitalInvested: number;
     joinedAt: string;
   };
-  overall: PortalPeriod & { buyByQuality: QualityRow[]; sellByQuality: QualityRow[] };
+  overall: PortalPeriod & {
+    buyByQuality: QualityRow[];
+    sellByQuality: QualityRow[];
+    partnerSplit: PartnerShareRow[];
+  };
   daily: PortalPeriod[];
   generatedAt: string;
 }

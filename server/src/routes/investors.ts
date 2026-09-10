@@ -8,6 +8,12 @@ import { makePassword, makeUsername } from "../lib/credentials.js";
 export const investorsRouter = Router();
 investorsRouter.use(authRequired, adminRequired);
 
+const partnerSchema = z.object({
+  name: z.string().trim().min(1, "Partner name is required"),
+  role: z.string().trim().optional().or(z.literal("")),
+  percentage: z.coerce.number().min(0).max(100),
+});
+
 const investorSchema = z.object({
   name: z.string().min(1, "Name is required"),
   email: z.string().email().optional().or(z.literal("")),
@@ -18,7 +24,25 @@ const investorSchema = z.object({
   fxRate: z.coerce.number().positive().optional(),
   notes: z.string().optional().or(z.literal("")),
   status: z.enum(["ACTIVE", "INACTIVE"]).optional(),
+  /** Second-level profit split. Empty = investor keeps 100% of their share. */
+  partners: z.array(partnerSchema).optional(),
 });
+
+/** Returns an error string if the partner list is present but doesn't total 100%. */
+function validatePartners(partners: z.infer<typeof partnerSchema>[] | undefined): string | null {
+  if (!partners || partners.length === 0) return null;
+  const total = partners.reduce((s, p) => s + (p.percentage || 0), 0);
+  if (Math.abs(total - 100) > 0.1)
+    return `Profit partners must total 100% (currently ${total.toFixed(2)}%).`;
+  return null;
+}
+
+const partnerData = (partners: z.infer<typeof partnerSchema>[] | undefined) =>
+  (partners ?? []).map((p) => ({
+    name: p.name,
+    role: p.role ? p.role : null,
+    percentage: p.percentage,
+  }));
 
 async function resolveCurrency(code: string, fxRate: number) {
   const cur = await prisma.currency.findUnique({ where: { code } });
@@ -39,6 +63,12 @@ function publicInvestor(inv: any) {
     status: inv.status,
     notes: inv.notes,
     joinedAt: inv.joinedAt,
+    partners: (inv.partners ?? []).map((p: any) => ({
+      id: p.id,
+      name: p.name,
+      role: p.role ?? null,
+      percentage: p.percentage,
+    })),
     loginStatus: inv.user?.status ?? null,
     username: inv.user?.username ?? null,
     // credentials to hand over (present right after create / regenerate)
@@ -50,7 +80,7 @@ function publicInvestor(inv: any) {
 // List
 investorsRouter.get("/", async (_req, res) => {
   const investors = await prisma.investor.findMany({
-    include: { user: true },
+    include: { user: true, partners: { orderBy: { createdAt: "asc" } } },
     orderBy: { createdAt: "asc" },
   });
   const totalShare = investors
@@ -63,7 +93,7 @@ investorsRouter.get("/", async (_req, res) => {
 investorsRouter.get("/:id", async (req, res) => {
   const inv = await prisma.investor.findUnique({
     where: { id: req.params.id },
-    include: { user: true },
+    include: { user: true, partners: { orderBy: { createdAt: "asc" } } },
   });
   if (!inv) return res.status(404).json({ error: "Investor not found" });
   res.json(publicInvestor(inv));
@@ -78,6 +108,8 @@ investorsRouter.post("/", async (req, res) => {
   const d = parsed.data;
   const cur = await resolveCurrency(d.currencyCode ?? "AED", d.fxRate ?? 1);
   if (!cur) return res.status(400).json({ error: `Unknown currency "${d.currencyCode}"` });
+  const partnerErr = validatePartners(d.partners);
+  if (partnerErr) return res.status(400).json({ error: partnerErr });
   const username = makeUsername(d.name);
   const password = makePassword();
   const hash = await bcrypt.hash(password, 10);
@@ -98,8 +130,9 @@ investorsRouter.post("/", async (req, res) => {
       user: {
         create: { username, password: hash, role: "INVESTOR", status: "ACTIVE" },
       },
+      partners: { create: partnerData(d.partners) },
     },
-    include: { user: true },
+    include: { user: true, partners: { orderBy: { createdAt: "asc" } } },
   });
 
   res.status(201).json(publicInvestor(inv));
@@ -125,6 +158,12 @@ investorsRouter.put("/:id", async (req, res) => {
     currencyCode = cur.code;
     fxRate = cur.fxRate;
   }
+
+  if (d.partners !== undefined) {
+    const partnerErr = validatePartners(d.partners);
+    if (partnerErr) return res.status(400).json({ error: partnerErr });
+  }
+
   const inv = await prisma.investor.update({
     where: { id: req.params.id },
     data: {
@@ -137,6 +176,10 @@ investorsRouter.put("/:id", async (req, res) => {
       fxRate,
       notes: d.notes === undefined ? undefined : d.notes || null,
       status: d.status ?? undefined,
+      // Replace-all: only touch partners when the client sends the array.
+      ...(d.partners !== undefined
+        ? { partners: { deleteMany: {}, create: partnerData(d.partners) } }
+        : {}),
     },
     include: { user: true },
   });
@@ -149,7 +192,14 @@ investorsRouter.put("/:id", async (req, res) => {
     });
   }
 
-  res.json(publicInvestor(await prisma.investor.findUnique({ where: { id: inv.id }, include: { user: true } })));
+  res.json(
+    publicInvestor(
+      await prisma.investor.findUnique({
+        where: { id: inv.id },
+        include: { user: true, partners: { orderBy: { createdAt: "asc" } } },
+      })
+    )
+  );
 });
 
 // Regenerate credentials (old password stops working immediately)

@@ -60,11 +60,28 @@ model Investor {
 
   user     User?
   expenses Expense[]
+  partners ProfitPartner[]
 
   /// Plaintext of the most recently generated password, kept so the admin can
   /// re-share credentials. Cleared once the admin marks it as delivered.
   generatedUsername String?
   generatedPassword String?
+}
+
+/// A second-level split of ONE investor's profit share. If an investor has no
+/// partners they keep 100% of their share (the original behaviour). If they
+/// have partners, the partner `percentage` values must total 100 and the
+/// investor's net share (profit or loss) is divided among them by percentage.
+model ProfitPartner {
+  id         String   @id @default(cuid())
+  investor   Investor @relation(fields: [investorId], references: [id], onDelete: Cascade)
+  investorId String
+  name       String
+  role       String? // free text: "Capital", "Operator", "Sleeping partner", …
+  percentage Float // 0–100, of the investor's net profit share
+  createdAt  DateTime @default(now())
+
+  @@index([investorId])
 }
 
 /// Expense headers. "Flight", "Total Travel", "Visa", "Hotel Bookings" are seeded;

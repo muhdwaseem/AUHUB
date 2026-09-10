@@ -22,7 +22,10 @@ async function loadData(from?: string, to?: string) {
       include: { category: true, investor: true },
       orderBy: { date: "asc" },
     }),
-    prisma.investor.findMany({ orderBy: { createdAt: "asc" } }),
+    prisma.investor.findMany({
+      orderBy: { createdAt: "asc" },
+      include: { partners: { orderBy: { createdAt: "asc" } } },
+    }),
   ]);
   return { txns, expenses, investors };
 }

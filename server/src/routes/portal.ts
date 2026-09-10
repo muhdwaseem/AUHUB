@@ -62,7 +62,10 @@ portalRouter.get("/summary", async (req, res) => {
       .status(isAdmin ? 400 : 403)
       .json({ error: isAdmin ? "investorId is required" : "Investor access required" });
 
-  const investor = await prisma.investor.findUnique({ where: { id: targetId } });
+  const investor = await prisma.investor.findUnique({
+    where: { id: targetId },
+    include: { partners: { orderBy: { createdAt: "asc" } } },
+  });
   if (!investor) return res.status(404).json({ error: "Investor record not found" });
 
   const { from, to } = req.query as Record<string, string>;
@@ -101,6 +104,20 @@ portalRouter.get("/summary", async (req, res) => {
   );
 
   const pct = investor.sharePercentage;
+  const overallView = investorView(report.overall, investor.id, pct);
+
+  // Second-level split: how this investor's own net share is divided among
+  // their profit partners (last partner absorbs the rounding remainder).
+  let allocated = 0;
+  const partnerSplit = investor.partners.map((p, idx) => {
+    const isLast = idx === investor.partners.length - 1;
+    const share = isLast
+      ? Math.round((overallView.myNetShare - allocated) * 100) / 100
+      : Math.round(((overallView.myNetShare * (p.percentage || 0)) / 100) * 100) / 100;
+    allocated = Math.round((allocated + share) * 100) / 100;
+    return { name: p.name, role: p.role ?? null, percentage: p.percentage || 0, share };
+  });
+
   res.json({
     investor: {
       name: investor.name,
@@ -109,7 +126,8 @@ portalRouter.get("/summary", async (req, res) => {
       joinedAt: investor.joinedAt,
     },
     overall: {
-      ...investorView(report.overall, investor.id, pct),
+      ...overallView,
+      partnerSplit,
       buyByQuality: report.overall.buyByQuality,
       sellByQuality: report.overall.sellByQuality,
     },
