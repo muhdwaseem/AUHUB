@@ -131,32 +131,47 @@ export default function Currencies() {
                   !c.rateUpdatedAt ||
                   Date.now() - new Date(c.rateUpdatedAt).getTime() > 24 * 3600 * 1000;
                 return (
-                  <div key={c.id} className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                    <span className="w-28 text-[13px] text-graphite-600">
-                      1 {c.code} =
-                    </span>
-                    <Input
-                      type="number"
-                      step="0.0001"
-                      min="0"
-                      className="w-32 text-right"
-                      value={rates[c.code] ?? ""}
-                      onChange={(e) => setRates({ ...rates, [c.code]: e.target.value })}
-                    />
-                    <span className="text-[13px] text-graphite-600">{baseCode}</span>
-                    <span className="ml-1 text-[11px] text-graphite-400">
+                  <div
+                    key={c.id}
+                    className="rounded-xl border border-graphite-100 bg-ink-900/30 p-3"
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <label
+                        htmlFor={`rate-${c.code}`}
+                        className="text-[13px] font-semibold text-graphite-700"
+                      >
+                        1 {c.code} = <span className="text-graphite-400">{baseCode}</span>
+                      </label>
+                      <div className="w-32 flex-none">
+                        <Input
+                          id={`rate-${c.code}`}
+                          type="number"
+                          step="0.0001"
+                          min="0"
+                          inputMode="decimal"
+                          className="text-right"
+                          value={rates[c.code] ?? ""}
+                          onChange={(e) => setRates({ ...rates, [c.code]: e.target.value })}
+                        />
+                      </div>
+                    </div>
+                    <p className="mt-2 text-[11px] text-graphite-400">
                       {r > 0 && `≈ ${(1 / r).toLocaleString("en-US", { maximumFractionDigits: 4 })} ${c.code} per ${baseCode} · `}
                       <span className={stale ? "text-warning" : ""}>
                         updated {relTime(c.rateUpdatedAt)}
                       </span>
-                    </span>
+                    </p>
                   </div>
                 );
               })}
             </div>
             {rateErr && <div className="mt-3"><ErrorNote>{rateErr}</ErrorNote></div>}
-            <div className="mt-4 flex justify-end">
-              <Button type="submit" disabled={rateBusy}>
+            <div className="mt-4 flex">
+              <Button
+                type="submit"
+                disabled={rateBusy}
+                className="w-full sm:ml-auto sm:w-auto"
+              >
                 {rateBusy ? "Saving…" : "Save today's rates"}
               </Button>
             </div>
