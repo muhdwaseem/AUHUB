@@ -180,7 +180,7 @@ export default function Gold() {
                 </div>
                 <span className="text-xs text-graphite-400">{shortDate(t.date)}</span>
               </div>
-              <div className="mt-2 grid grid-cols-3 gap-x-3 gap-y-1 text-[12.5px]">
+              <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-2 text-[12.5px]">
                 <div>
                   <div className="text-[10px] uppercase tracking-wide text-graphite-400">Weight</div>
                   <b className="tnum font-medium">{grams(t.quantityGrams)}</b>
@@ -189,9 +189,18 @@ export default function Gold() {
                   <div className="text-[10px] uppercase tracking-wide text-graphite-400">Rate/g</div>
                   <b className="tnum font-medium">{fmt(t.ratePerGram, t.currencyCode)}</b>
                 </div>
-                <div className="text-right">
-                  <div className="text-[10px] uppercase tracking-wide text-graphite-400">Total</div>
-                  <b className="tnum font-medium text-graphite-900">{fmt(t.totalAmount, t.currencyCode)}</b>
+                <div className="col-span-2 flex items-baseline justify-between border-t border-graphite-100 pt-1.5">
+                  <span className="text-[10px] uppercase tracking-wide text-graphite-400">Total</span>
+                  <span className="text-right">
+                    <b className="tnum font-medium text-graphite-900">
+                      {fmt(t.totalAmount, t.currencyCode)}
+                    </b>
+                    {t.currencyCode !== base.code && (
+                      <span className="tnum block text-[11px] text-graphite-400">
+                        ≈ {fmt(t.totalAmount * t.fxRate)}
+                      </span>
+                    )}
+                  </span>
                 </div>
               </div>
               {t.counterparty && (

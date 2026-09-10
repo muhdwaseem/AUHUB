@@ -353,7 +353,7 @@ export default function Reports() {
                     {money(d.netProfit)}
                   </span>
                 </button>
-                <div className="mt-2 grid grid-cols-3 gap-x-3 gap-y-1 text-[11.5px] text-graphite-500">
+                <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-[11.5px] text-graphite-500 sm:grid-cols-3">
                   <span>Bought <b className="tnum text-graphite-700">{grams(d.goldBoughtGrams)}</b></span>
                   <span>Sold <b className="tnum text-graphite-700">{grams(d.goldSoldGrams)}</b></span>
                   <span>Stock <b className="tnum text-accent-text">{grams(d.stockLeftGrams)}</b></span>
