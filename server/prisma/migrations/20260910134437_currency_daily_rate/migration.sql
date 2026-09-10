@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "Currency" ADD COLUMN     "rate" DOUBLE PRECISION NOT NULL DEFAULT 1,
+ADD COLUMN     "rateUpdatedAt" TIMESTAMP(3);

@@ -170,6 +170,8 @@ export interface PortalSummary {
 }
 
 export interface Currency {
+  rate: number;
+  rateUpdatedAt: string | null;
   id: string;
   code: string;
   symbol: string;

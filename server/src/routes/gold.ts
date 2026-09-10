@@ -19,10 +19,10 @@ const txnSchema = z.object({
 });
 
 /** Resolve a currency code to its stored row + a sane fxRate (base is always 1). */
-async function resolveCurrency(code: string, fxRate: number) {
+async function resolveCurrency(code: string, fxRate?: number) {
   const cur = await prisma.currency.findUnique({ where: { code } });
   if (!cur) return null;
-  return { code: cur.code, fxRate: cur.isBase ? 1 : fxRate };
+  return { code: cur.code, fxRate: cur.isBase ? 1 : (fxRate ?? cur.rate) };
 }
 
 goldRouter.get("/", async (req, res) => {
@@ -41,7 +41,7 @@ goldRouter.post("/", async (req, res) => {
   if (!parsed.success)
     return res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Invalid data" });
   const d = parsed.data;
-  const cur = await resolveCurrency(d.currencyCode ?? "AED", d.fxRate ?? 1);
+  const cur = await resolveCurrency(d.currencyCode ?? "AED", d.fxRate);
   if (!cur) return res.status(400).json({ error: `Unknown currency "${d.currencyCode}"` });
   const txn = await prisma.goldTransaction.create({
     data: {

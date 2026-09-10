@@ -44,10 +44,10 @@ const partnerData = (partners: z.infer<typeof partnerSchema>[] | undefined) =>
     percentage: p.percentage,
   }));
 
-async function resolveCurrency(code: string, fxRate: number) {
+async function resolveCurrency(code: string, fxRate?: number) {
   const cur = await prisma.currency.findUnique({ where: { code } });
   if (!cur) return null;
-  return { code: cur.code, fxRate: cur.isBase ? 1 : fxRate };
+  return { code: cur.code, fxRate: cur.isBase ? 1 : (fxRate ?? cur.rate) };
 }
 
 function publicInvestor(inv: any) {
@@ -106,7 +106,7 @@ investorsRouter.post("/", async (req, res) => {
     return res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Invalid data" });
 
   const d = parsed.data;
-  const cur = await resolveCurrency(d.currencyCode ?? "AED", d.fxRate ?? 1);
+  const cur = await resolveCurrency(d.currencyCode ?? "AED", d.fxRate);
   if (!cur) return res.status(400).json({ error: `Unknown currency "${d.currencyCode}"` });
   const partnerErr = validatePartners(d.partners);
   if (partnerErr) return res.status(400).json({ error: partnerErr });

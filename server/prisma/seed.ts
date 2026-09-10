@@ -9,11 +9,14 @@ const ADMIN_USERNAME = process.env.SEED_ADMIN_USERNAME || "admin";
 
 const DEFAULT_CATEGORIES = ["Flight", "Total Travel", "Visa", "Hotel Bookings"];
 
+// `rate` = AED per 1 unit of that currency. These are only starting values —
+// the admin keeps them current from the "Today's rates" panel; the seed never
+// overwrites a rate that's already been set manually.
 const CURRENCIES = [
-  { code: "AED", symbol: "AED", decimals: 2, isBase: true },
-  { code: "USD", symbol: "$", decimals: 2, isBase: false },
-  { code: "THB", symbol: "฿", decimals: 2, isBase: false },
-  { code: "IDR", symbol: "Rp", decimals: 0, isBase: false },
+  { code: "AED", symbol: "AED", decimals: 2, isBase: true, rate: 1 },
+  { code: "USD", symbol: "$", decimals: 2, isBase: false, rate: 3.6725 },
+  { code: "THB", symbol: "฿", decimals: 2, isBase: false, rate: 0.105 },
+  { code: "IDR", symbol: "Rp", decimals: 0, isBase: false, rate: 0.00024 },
 ];
 
 async function main() {
@@ -63,8 +66,13 @@ async function main() {
   for (const c of CURRENCIES) {
     await prisma.currency.upsert({
       where: { code: c.code },
-      update: { symbol: c.symbol, decimals: c.decimals }, // never flip isBase on an existing row
+      update: { symbol: c.symbol, decimals: c.decimals }, // never flip isBase / a manual rate
       create: c,
+    });
+    // Give a starting rate only if one was never set by the admin.
+    await prisma.currency.updateMany({
+      where: { code: c.code, rateUpdatedAt: null, isBase: false },
+      data: { rate: c.rate },
     });
   }
   console.log(`Seeded ${CURRENCIES.length} currencies (base: AED)`);

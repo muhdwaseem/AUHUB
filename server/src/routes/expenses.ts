@@ -29,10 +29,10 @@ const expenseSchema = z.object({
 });
 
 /** base = amount * fxRate; the base currency is always fxRate 1. */
-async function resolveCurrency(code: string, fxRate: number) {
+async function resolveCurrency(code: string, fxRate?: number) {
   const cur = await prisma.currency.findUnique({ where: { code } });
   if (!cur) return null;
-  return { code: cur.code, fxRate: cur.isBase ? 1 : fxRate };
+  return { code: cur.code, fxRate: cur.isBase ? 1 : (fxRate ?? cur.rate) };
 }
 
 function serialize(e: any) {
@@ -107,7 +107,7 @@ expensesRouter.post("/", upload.array("files", 10), async (req, res) => {
   );
   if (linkErr) return res.status(400).json({ error: linkErr });
 
-  const cur = await resolveCurrency(parsed.data.currencyCode ?? "AED", parsed.data.fxRate ?? 1);
+  const cur = await resolveCurrency(parsed.data.currencyCode ?? "AED", parsed.data.fxRate);
   if (!cur) return res.status(400).json({ error: `Unknown currency "${parsed.data.currencyCode}"` });
 
   const files = (req.files as Express.Multer.File[]) ?? [];

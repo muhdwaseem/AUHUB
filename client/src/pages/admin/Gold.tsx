@@ -17,7 +17,7 @@ import {
   Textarea,
 } from "../../components/ui";
 import { grams, shortDate, dateInput } from "../../format";
-import { useCurrency } from "../../currency";
+import { useCurrency, relTime } from "../../currency";
 
 interface ListResp {
   transactions: GoldTxn[];
@@ -36,7 +36,7 @@ const blank = {
 };
 
 export default function Gold() {
-  const { currencies, base, fmt } = useCurrency();
+  const { currencies, base, byCode, fmt } = useCurrency();
   const [typeFilter, setTypeFilter] = useState("");
   const { data, loading, error, reload } = useFetch<ListResp>(
     `/gold${typeFilter ? `?type=${typeFilter}` : ""}`,
@@ -307,7 +307,8 @@ export default function Gold() {
                   setForm({
                     ...form,
                     currencyCode: e.target.value,
-                    fxRate: e.target.value === base.code ? "1" : form.fxRate,
+                    // pull today's saved rate for the chosen currency
+                    fxRate: e.target.value === base.code ? "1" : String(byCode(e.target.value).rate),
                   })
                 }
               >
@@ -322,7 +323,9 @@ export default function Gold() {
               <Field
                 label={`1 ${form.currencyCode} = ? ${base.code}`}
                 required
-                hint="Exchange rate on the trade date"
+                hint={`Today's saved rate: ${byCode(form.currencyCode).rate} ${base.code} · updated ${relTime(
+                  byCode(form.currencyCode).rateUpdatedAt
+                )}. Override here if this trade used a different rate.`}
               >
                 <Input
                   type="number"

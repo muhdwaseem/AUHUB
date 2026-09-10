@@ -27,7 +27,7 @@ import {
   Textarea,
 } from "../../components/ui";
 import { pct, shortDate } from "../../format";
-import { useCurrency } from "../../currency";
+import { useCurrency, relTime } from "../../currency";
 
 interface ListResp {
   investors: Investor[];
@@ -51,7 +51,7 @@ const blank = {
 
 export default function Investors() {
   const navigate = useNavigate();
-  const { currencies, base, fmt } = useCurrency();
+  const { currencies, base, byCode, fmt } = useCurrency();
   const { data, loading, error, reload } = useFetch<ListResp>("/investors");
   // Current P/L per active investor, to show a running balance next to capital.
   const { data: report } = useFetch<ReportSummary>("/reports/summary");
@@ -482,7 +482,7 @@ export default function Investors() {
                   setForm({
                     ...form,
                     currencyCode: e.target.value,
-                    fxRate: e.target.value === base.code ? "1" : form.fxRate,
+                    fxRate: e.target.value === base.code ? "1" : String(byCode(e.target.value).rate),
                   })
                 }
               >
@@ -496,7 +496,9 @@ export default function Investors() {
             {form.currencyCode !== base.code && (
               <Field
                 label={`1 ${form.currencyCode} = ? ${base.code}`}
-                hint="Rate used to value capital in the base currency"
+                hint={`Today's saved rate: ${byCode(form.currencyCode).rate} ${base.code} · updated ${relTime(
+                  byCode(form.currencyCode).rateUpdatedAt
+                )}`}
               >
                 <Input
                   type="number"

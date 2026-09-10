@@ -21,12 +21,17 @@ datasource db {
 /// amount is stored in that record's own currency; `fxRate` converts it to the
 /// base currency (isBase = true) for all reporting: amount_in_base = amount * fxRate.
 model Currency {
-  id        String   @id @default(cuid())
-  code      String   @unique // "AED", "USD", "THB", "IDR", …
-  symbol    String // "AED", "$", "฿", "Rp"
-  decimals  Int      @default(2) // IDR = 0
-  isBase    Boolean  @default(false) // exactly one; the reporting currency
-  createdAt DateTime @default(now())
+  id            String    @id @default(cuid())
+  code          String    @unique // "AED", "USD", "THB", "IDR", …
+  symbol        String // "AED", "$", "฿", "Rp"
+  decimals      Int       @default(2) // IDR = 0
+  isBase        Boolean   @default(false) // exactly one; the reporting currency
+  /// Today's rate: base-currency units per 1 unit of this currency
+  /// (amount_in_base = amount * rate). The admin updates this daily; a new
+  /// trade/expense in this currency pre-fills its fxRate from here.
+  rate          Float     @default(1)
+  rateUpdatedAt DateTime?
+  createdAt     DateTime  @default(now())
 }
 
 /// Login accounts. One ADMIN (seeded) plus one auto-created account per investor.

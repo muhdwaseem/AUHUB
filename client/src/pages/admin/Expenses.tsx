@@ -18,7 +18,7 @@ import {
 } from "../../components/ui";
 import { AttachmentLink } from "../../components/AttachmentLink";
 import { shortDate, dateInput } from "../../format";
-import { useCurrency } from "../../currency";
+import { useCurrency, relTime } from "../../currency";
 
 interface ListResp {
   expenses: Expense[];
@@ -40,7 +40,7 @@ const blankForm = {
 };
 
 export default function Expenses() {
-  const { currencies, base, fmt } = useCurrency();
+  const { currencies, base, byCode, fmt } = useCurrency();
   const [catFilter, setCatFilter] = useState("");
   const { data: cats } = useFetch<Category[]>("/expense-categories");
   const { data: investorsResp } = useFetch<InvestorsResp>("/investors");
@@ -320,7 +320,7 @@ export default function Expenses() {
                   setForm({
                     ...form,
                     currencyCode: e.target.value,
-                    fxRate: e.target.value === base.code ? "1" : form.fxRate,
+                    fxRate: e.target.value === base.code ? "1" : String(byCode(e.target.value).rate),
                   })
                 }
               >
@@ -338,8 +338,8 @@ export default function Expenses() {
               required
               hint={
                 Number(form.amount) > 0 && Number(form.fxRate) > 0
-                  ? `≈ ${fmt(Number(form.amount) * Number(form.fxRate))} in ${base.code}`
-                  : "Exchange rate on the expense date"
+                  ? `≈ ${fmt(Number(form.amount) * Number(form.fxRate))} in ${base.code} · today's saved rate ${byCode(form.currencyCode).rate}, updated ${relTime(byCode(form.currencyCode).rateUpdatedAt)}`
+                  : `Today's saved rate: ${byCode(form.currencyCode).rate} ${base.code} · updated ${relTime(byCode(form.currencyCode).rateUpdatedAt)}`
               }
             >
               <Input

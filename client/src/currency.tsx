@@ -8,8 +8,22 @@ const FALLBACK_BASE: Currency = {
   symbol: "AED",
   decimals: 2,
   isBase: true,
+  rate: 1,
+  rateUpdatedAt: null,
   createdAt: "",
 };
+
+/** "3h ago" / "yesterday" / "2 days ago" / "just now" — coarse, for the rate age. */
+export function relTime(iso: string | null | undefined): string {
+  if (!iso) return "never";
+  const mins = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
+  if (mins < 2) return "just now";
+  if (mins < 60) return `${mins} min ago`;
+  const hrs = Math.round(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.round(hrs / 24);
+  return days === 1 ? "yesterday" : `${days} days ago`;
+}
 
 interface CurrencyCtx {
   currencies: Currency[];
