@@ -3,6 +3,7 @@ import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard,
   Users,
+  Layers,
   Coins,
   ReceiptText,
   ListChecks,
@@ -15,6 +16,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "../auth";
 import { useTheme } from "../theme";
+import { useTeam } from "../team";
 import { ChangePasswordModal } from "./ChangePasswordModal";
 
 export interface NavItem {
@@ -25,6 +27,7 @@ export interface NavItem {
 
 const NAV_ICONS: Record<string, ReactNode> = {
   "/admin": <LayoutDashboard size={19} />,
+  "/admin/teams": <Layers size={19} />,
   "/admin/investors": <Users size={19} />,
   "/admin/gold": <Coins size={19} />,
   "/admin/expenses": <ReceiptText size={19} />,
@@ -42,8 +45,10 @@ export function AppShell({ nav, children }: { nav: NavItem[]; children: ReactNod
   const navigate = useNavigate();
   const location = useLocation();
   const { theme, toggleTheme } = useTheme();
+  const { teams, activeTeamId, setActiveTeam } = useTeam();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [pwOpen, setPwOpen] = useState(false);
+  const showTeamBar = user?.role === "ADMIN" && teams.length > 0;
 
   useEffect(() => setDrawerOpen(false), [location.pathname]);
 
@@ -129,8 +134,32 @@ export function AppShell({ nav, children }: { nav: NavItem[]; children: ReactNod
       </aside>
 
       {/* ── board ── */}
-      <div key={location.pathname} className="board-in min-w-0 px-4 py-4 sm:px-6 sm:py-6">
-        {children}
+      <div className="min-w-0">
+        {showTeamBar && (
+          <div className="flex items-center gap-2.5 border-b border-graphite-100 bg-ink-800/60 px-4 py-2 sm:px-6">
+            <Layers size={15} className="flex-none text-graphite-400" />
+            <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-graphite-400">
+              Team
+            </span>
+            <select
+              value={activeTeamId ?? ""}
+              onChange={(e) => setActiveTeam(e.target.value)}
+              className="min-w-0 flex-1 rounded-lg border border-ink-600 bg-ink-900 px-2.5 py-1.5 text-[13px] font-medium text-graphite-900 focus:border-gold-500 focus:outline-none focus:ring-2 focus:ring-gold-400/30 sm:flex-none sm:min-w-[220px]"
+            >
+              {teams.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.name}
+                </option>
+              ))}
+            </select>
+            <span className="hidden text-[11px] text-graphite-400 sm:inline">
+              every page below is scoped to this team
+            </span>
+          </div>
+        )}
+        <div key={location.pathname} className="board-in px-4 py-4 sm:px-6 sm:py-6">
+          {children}
+        </div>
       </div>
       </div>
       <ChangePasswordModal open={pwOpen} onClose={() => setPwOpen(false)} />

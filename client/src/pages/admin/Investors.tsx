@@ -28,6 +28,7 @@ import {
 } from "../../components/ui";
 import { pct, shortDate } from "../../format";
 import { useCurrency, relTime } from "../../currency";
+import { useTeam } from "../../team";
 
 interface ListResp {
   investors: Investor[];
@@ -40,10 +41,10 @@ const blank = {
   name: "",
   email: "",
   phone: "",
-  sharePercentage: "",
   capitalInvested: "",
   currencyCode: "AED",
   fxRate: "1",
+  companyCutPct: "",
   notes: "",
   status: "ACTIVE" as "ACTIVE" | "INACTIVE",
   partners: [] as PartnerRow[],
@@ -52,9 +53,16 @@ const blank = {
 export default function Investors() {
   const navigate = useNavigate();
   const { currencies, base, byCode, fmt } = useCurrency();
-  const { data, loading, error, reload } = useFetch<ListResp>("/investors");
+  const { activeTeamId, activeTeam } = useTeam();
+  const { data, loading, error, reload } = useFetch<ListResp>(
+    activeTeamId ? `/investors?teamId=${activeTeamId}` : null,
+    [activeTeamId]
+  );
   // Current P/L per active investor, to show a running balance next to capital.
-  const { data: report } = useFetch<ReportSummary>("/reports/summary");
+  const { data: report } = useFetch<ReportSummary>(
+    activeTeamId ? `/reports/summary?teamId=${activeTeamId}` : null,
+    [activeTeamId]
+  );
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Investor | null>(null);
   const [form, setForm] = useState(blank);
@@ -74,10 +82,10 @@ export default function Investors() {
       name: inv.name,
       email: inv.email ?? "",
       phone: inv.phone ?? "",
-      sharePercentage: String(inv.sharePercentage),
       capitalInvested: String(inv.capitalInvested),
       currencyCode: inv.currencyCode ?? "AED",
       fxRate: String(inv.fxRate ?? 1),
+      companyCutPct: inv.companyCutPct === null ? "" : String(inv.companyCutPct),
       notes: inv.notes ?? "",
       status: inv.status,
       partners: (inv.partners ?? []).map((p) => ({
@@ -106,10 +114,11 @@ export default function Investors() {
         name: form.name,
         email: form.email,
         phone: form.phone,
-        sharePercentage: Number(form.sharePercentage || 0),
+        teamId: activeTeamId,
         capitalInvested: Number(form.capitalInvested || 0),
         currencyCode: form.currencyCode,
         fxRate: form.currencyCode === base.code ? 1 : Number(form.fxRate || 1),
+        companyCutPct: form.companyCutPct === "" ? null : Number(form.companyCutPct),
         notes: form.notes,
         status: form.status,
         partners: form.partners.map((p) => ({
@@ -182,10 +191,23 @@ export default function Investors() {
     }
   }
 
+  if (!activeTeamId)
+    return (
+      <>
+        <PageHeader title="Investors" subtitle="Investors belong to a team." />
+        <Card>
+          <p className="px-5 py-14 text-center text-sm text-graphite-400">
+            No team selected. Create one on the <b className="text-graphite-600">Teams</b> page
+            first, then add its investors here.
+          </p>
+        </Card>
+      </>
+    );
   if (loading) return <Spinner />;
   if (error) return <ErrorNote>{error}</ErrorNote>;
 
   const totalShare = data?.totalActiveShare ?? 0;
+  const teamDefaultCut = activeTeam?.companyCutPct ?? 0;
 
   const splitById = new Map((report?.investorSplit ?? []).map((r) => [r.investorId, r]));
   const plById = new Map((report?.investorSplit ?? []).map((r) => [r.investorId, r.netShare]));
@@ -299,7 +321,7 @@ export default function Investors() {
     <>
       <PageHeader
         title="Investors"
-        subtitle="Add investors, set their profit share, and issue login credentials."
+        subtitle={`${activeTeam?.name ?? "This team"} · share % is derived from each member's capital; the company takes ${teamDefaultCut}% of each share by default.`}
         action={
           <Button onClick={openAdd}>
             <Plus size={16} /> Add investor
@@ -350,6 +372,11 @@ export default function Investors() {
                 <div>
                   <span className="text-graphite-400">Share </span>
                   <b className="tnum font-medium text-accent-text">{pct(inv.sharePercentage)}</b>
+                  {inv.effectiveCompanyCutPct > 0 && (
+                    <div className="text-[10px] text-graphite-400">
+                      co. cut {inv.effectiveCompanyCutPct}%
+                    </div>
+                  )}
                 </div>
                 <div className="text-right">
                   <span className="text-graphite-400">Capital </span>
@@ -403,8 +430,15 @@ export default function Investors() {
                     <br />
                     {inv.phone || "—"}
                   </td>
-                  <td className="px-5 py-3 text-right tnum font-medium text-accent-text">
-                    {pct(inv.sharePercentage)}
+                  <td className="px-5 py-3 text-right">
+                    <div className="tnum font-medium text-accent-text">
+                      {pct(inv.sharePercentage)}
+                    </div>
+                    {inv.effectiveCompanyCutPct > 0 && (
+                      <div className="text-[11px] text-graphite-400">
+                        co. cut {inv.effectiveCompanyCutPct}%
+                      </div>
+                    )}
                   </td>
                   <td className="px-5 py-3 text-right">
                     <div className="tnum text-graphite-600">{fmt(inv.capitalInvested, inv.currencyCode)}</div>
@@ -453,17 +487,11 @@ export default function Investors() {
             </Field>
           </div>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <Field label="Profit share %" required hint="0 – 100">
-              <Input
-                type="number"
-                step="0.01"
-                min="0"
-                max="100"
-                value={form.sharePercentage}
-                onChange={(e) => setForm({ ...form, sharePercentage: e.target.value })}
-              />
-            </Field>
-            <Field label="Capital invested">
+            <Field
+              label="Capital invested"
+              required
+              hint="Drives this member's profit share % across the team."
+            >
               <Input
                 type="number"
                 step="0.01"
@@ -472,7 +500,28 @@ export default function Investors() {
                 onChange={(e) => setForm({ ...form, capitalInvested: e.target.value })}
               />
             </Field>
+            <Field
+              label="Company cut %"
+              hint={`Blank = team default (${teamDefaultCut}%). The company takes this % of the member's profit share before their partner split.`}
+            >
+              <Input
+                type="number"
+                step="0.01"
+                min="0"
+                max="100"
+                placeholder={`${teamDefaultCut} (team default)`}
+                value={form.companyCutPct}
+                onChange={(e) => setForm({ ...form, companyCutPct: e.target.value })}
+              />
+            </Field>
           </div>
+          {editing && (
+            <p className="rounded-lg bg-graphite-50 px-3 py-2 text-[11.5px] text-graphite-500">
+              Current derived share:{" "}
+              <b className="text-graphite-700">{pct(editing.sharePercentage)}</b> —
+              recalculated from capital across the team when you save.
+            </p>
+          )}
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Field label="Capital currency">
               <select

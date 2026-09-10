@@ -17,6 +17,25 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
+/// A self-contained book / fund. Every investor, gold trade and expense belongs
+/// to exactly one team, and a team's profit & loss is computed only from its own
+/// rows — Team 2's purchases never touch Team 1's stock, cash or P&L.
+model Team {
+  id   String @id @default(cuid())
+  name String @unique
+
+  /// Default % the company (AU Hub) takes from each member's POSITIVE profit
+  /// share, before that member's working/capital partner split. 0–100. A member
+  /// can override this with their own `Investor.companyCutPct`.
+  companyCutPct Float @default(0)
+
+  createdAt DateTime @default(now())
+
+  investors    Investor[]
+  transactions GoldTransaction[]
+  expenses     Expense[]
+}
+
 /// A currency the business trades or spends in. Every trade/expense/capital
 /// amount is stored in that record's own currency; `fxRate` converts it to the
 /// base currency (isBase = true) for all reporting: amount_in_base = amount * fxRate.
@@ -49,23 +68,40 @@ model User {
 
 /// A person who has invested capital and receives a percentage share of profit.
 model Investor {
-  id              String   @id @default(cuid())
-  name            String
-  email           String?
-  phone           String?
-  sharePercentage Float    @default(0) // 0 - 100
-  capitalInvested Float    @default(0) // informational, in `currencyCode`
-  currencyCode    String   @default("AED")
-  fxRate          Float    @default(1) // capitalInvested * fxRate = capital in base currency
-  status          String   @default("ACTIVE") // ACTIVE | INACTIVE
-  notes           String?
-  joinedAt        DateTime @default(now())
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id   String  @id @default(cuid())
+  name String
+  email String?
+  phone String?
+
+  /// The team / book this investor belongs to. Set for every row; nullable only
+  /// so the introducing migration can backfill existing data before the app
+  /// (which always supplies it) takes over.
+  team   Team?   @relation(fields: [teamId], references: [id])
+  teamId String?
+
+  /// Derived, not entered: the server recomputes this as capitalInvested (in
+  /// base currency) ÷ the team's total capital, on every member add/edit/remove,
+  /// so a team's active shares always total ~100.
+  sharePercentage Float @default(0) // 0 - 100
+  capitalInvested Float @default(0) // the member's capital, in `currencyCode`
+  currencyCode    String @default("AED")
+  fxRate          Float  @default(1) // capitalInvested * fxRate = capital in base currency
+
+  /// Per-member override of the team's default company cut %. null = inherit
+  /// the team default.
+  companyCutPct Float?
+
+  status   String   @default("ACTIVE") // ACTIVE | INACTIVE
+  notes    String?
+  joinedAt DateTime @default(now())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   user     User?
   expenses Expense[]
   partners ProfitPartner[]
+
+  @@index([teamId])
 
   /// Plaintext of the most recently generated password, kept so the admin can
   /// re-share credentials. Cleared once the admin marks it as delivered.
@@ -103,6 +139,12 @@ model Expense {
   id           String          @id @default(cuid())
   category     ExpenseCategory @relation(fields: [categoryId], references: [id])
   categoryId   String
+
+  /// The team / book this expense is charged to (nullable only for the
+  /// introducing migration's backfill; the app always sets it).
+  team   Team?   @relation(fields: [teamId], references: [id])
+  teamId String?
+
   amount       Float // in `currencyCode`
   currencyCode String          @default("AED")
   fxRate       Float           @default(1) // amount * fxRate = amount in base currency
@@ -118,6 +160,8 @@ model Expense {
   /// When true (and investorId set) this expense is deducted from that
   /// investor's profit share only, not from the shared pool.
   chargedToInvestor Boolean @default(false)
+
+  @@index([teamId])
 }
 
 /// Payment slip / invoice / receipt attached to an expense (image or PDF).
@@ -134,8 +178,14 @@ model ExpenseAttachment {
 
 /// A single gold purchase (BUY) or sale (SELL). "quality" is the purity grade.
 model GoldTransaction {
-  id            String   @id @default(cuid())
-  type          String // BUY | SELL
+  id   String   @id @default(cuid())
+  type String // BUY | SELL
+
+  /// The team / book whose capital this trade was made with (nullable only for
+  /// the introducing migration's backfill; the app always sets it).
+  team   Team?   @relation(fields: [teamId], references: [id])
+  teamId String?
+
   date          DateTime
   quality       String // e.g. "24K", "22K", "999", "916"
   quantityGrams Float
@@ -147,4 +197,6 @@ model GoldTransaction {
   notes         String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+
+  @@index([teamId])
 }

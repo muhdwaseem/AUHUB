@@ -19,6 +19,7 @@ const optionalId = z.preprocess(
 
 const expenseSchema = z.object({
   categoryId: z.string().min(1, "Choose an expense header"),
+  teamId: z.string().trim().min(1).optional(),
   amount: z.coerce.number().positive("Amount must be greater than 0"),
   currencyCode: z.string().trim().toUpperCase().optional(),
   fxRate: z.coerce.number().positive("FX rate must be greater than 0").optional(),
@@ -40,6 +41,7 @@ function serialize(e: any) {
     id: e.id,
     categoryId: e.categoryId,
     categoryName: e.category?.name,
+    teamId: e.teamId ?? null,
     amount: e.amount,
     currencyCode: e.currencyCode ?? "AED",
     fxRate: e.fxRate ?? 1,
@@ -75,8 +77,9 @@ async function validateInvestorLink(
 
 // List (optionally filter by date range / category)
 expensesRouter.get("/", async (req, res) => {
-  const { from, to, categoryId, investorId } = req.query as Record<string, string>;
+  const { from, to, categoryId, investorId, teamId } = req.query as Record<string, string>;
   const where: any = {};
+  if (teamId) where.teamId = teamId;
   if (from || to) where.date = {};
   if (from) where.date.gte = new Date(from);
   if (to) where.date.lte = new Date(to);
@@ -101,6 +104,10 @@ expensesRouter.post("/", upload.array("files", 10), async (req, res) => {
   const cat = await prisma.expenseCategory.findUnique({ where: { id: parsed.data.categoryId } });
   if (!cat) return res.status(400).json({ error: "Expense header not found" });
 
+  if (!parsed.data.teamId) return res.status(400).json({ error: "A team is required" });
+  const team = await prisma.team.findUnique({ where: { id: parsed.data.teamId } });
+  if (!team) return res.status(400).json({ error: "Selected team not found" });
+
   const linkErr = await validateInvestorLink(
     parsed.data.investorId,
     parsed.data.chargedToInvestor
@@ -115,6 +122,7 @@ expensesRouter.post("/", upload.array("files", 10), async (req, res) => {
   const expense = await prisma.expense.create({
     data: {
       categoryId: parsed.data.categoryId,
+      teamId: parsed.data.teamId,
       amount: parsed.data.amount,
       currencyCode: cur.code,
       fxRate: cur.fxRate,

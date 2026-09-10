@@ -6,19 +6,25 @@ import type { ReportSummary } from "../../types";
 import { PageHeader } from "../../components/AppShell";
 import { Button, Card, ErrorNote, Field, Input, Spinner, Stat } from "../../components/ui";
 import { money, grams, pct, shortDate } from "../../format";
+import { useTeam } from "../../team";
 
 export default function Reports() {
+  const { activeTeamId, activeTeam } = useTeam();
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const qs = useMemo(() => {
     const p = new URLSearchParams();
+    if (activeTeamId) p.set("teamId", activeTeamId);
     if (from) p.set("from", from);
     if (to) p.set("to", to);
     const s = p.toString();
     return s ? `?${s}` : "";
-  }, [from, to]);
+  }, [from, to, activeTeamId]);
 
-  const { data, loading, error } = useFetch<ReportSummary>(`/reports/summary${qs}`, [qs]);
+  const { data, loading, error } = useFetch<ReportSummary>(
+    activeTeamId ? `/reports/summary${qs}` : null,
+    [qs]
+  );
   const [expandedDay, setExpandedDay] = useState<string | null>(null);
 
   function exportCsv() {
@@ -75,6 +81,7 @@ export default function Reports() {
     URL.revokeObjectURL(url);
   }
 
+  if (!activeTeamId) return <ErrorNote>Select a team first.</ErrorNote>;
   if (loading) return <Spinner />;
   if (error) return <ErrorNote>{error}</ErrorNote>;
   if (!data) return null;
@@ -85,7 +92,7 @@ export default function Reports() {
     <>
       <PageHeader
         title="Profit & Loss"
-        subtitle="Daily accounts and the overall book, with each investor’s share."
+        subtitle={`${activeTeam?.name ?? data.teamName ?? "This team"} · daily accounts and the overall book, with each member's share.`}
         action={
           <Button variant="secondary" onClick={exportCsv}>
             <Download size={16} /> Export CSV
@@ -145,11 +152,18 @@ export default function Reports() {
               {money(o.commonNetProfit)}
             </span>
           </div>
+          {data.companyEarnings > 0 && (
+            <div className="flex justify-between">
+              <span className="text-graphite-600">− Company cut (across all members)</span>
+              <span className="tnum text-graphite-500">−{money(data.companyEarnings)}</span>
+            </div>
+          )}
           <p className="pt-1.5 text-[12px] leading-relaxed text-graphite-400">
-            Each investor’s <b className="font-semibold text-graphite-600">net share</b> = common net pool ×
-            their % − any expenses charged directly to them. Where an investor has{" "}
-            <b className="font-semibold text-graphite-600">profit partners</b>, that net share is then
-            divided again by the partner percentages (shown indented below).
+            Each member’s share = common net pool × their % − expenses charged to them. The{" "}
+            <b className="font-semibold text-graphite-600">company</b> then takes its % of that
+            (only when it’s a profit), and whatever is left is divided again by the member’s{" "}
+            <b className="font-semibold text-graphite-600">profit partners</b> (shown indented
+            below).
           </p>
         </div>
       </Card>
@@ -180,6 +194,12 @@ export default function Reports() {
                   <div className="col-span-2">
                     <span className="text-graphite-400">Charged to them </span>
                     <b className="tnum text-warning">−{money(s.chargedExpenses)}</b>
+                  </div>
+                )}
+                {s.companyCut > 0 && (
+                  <div className="col-span-2">
+                    <span className="text-graphite-400">Company cut ({s.companyCutPct}%) </span>
+                    <b className="tnum text-graphite-500">−{money(s.companyCut)}</b>
                   </div>
                 )}
               </div>
@@ -225,6 +245,7 @@ export default function Reports() {
                 <th className="px-4 py-2.5 text-right font-medium">Gross share</th>
                 <th className="px-4 py-2.5 text-right font-medium">Shared exp.</th>
                 <th className="px-4 py-2.5 text-right font-medium">Charged to them</th>
+                <th className="px-4 py-2.5 text-right font-medium">Company cut</th>
                 <th className="px-4 py-2.5 text-right font-medium">Net share</th>
                 <th className="px-4 py-2.5 text-right font-medium">Net loss share</th>
               </tr>
@@ -242,6 +263,9 @@ export default function Reports() {
                     <td className="px-4 py-3 text-right tnum text-warning">
                       {s.chargedExpenses > 0 ? `−${money(s.chargedExpenses)}` : "—"}
                     </td>
+                    <td className="px-4 py-3 text-right tnum text-graphite-500">
+                      {s.companyCut > 0 ? `−${money(s.companyCut)} (${s.companyCutPct}%)` : "—"}
+                    </td>
                     <td className={`px-4 py-3 text-right tnum font-medium ${s.netShare >= 0 ? "text-positive" : "text-negative"}`}>
                       {money(s.netShare)}
                     </td>
@@ -251,7 +275,7 @@ export default function Reports() {
                   </tr>
                   {s.partnerSplit.map((p, i) => (
                     <tr key={i} className="bg-graphite-50/50 text-[12.5px]">
-                      <td className="py-2 pl-9 pr-5 text-graphite-500" colSpan={5}>
+                      <td className="py-2 pl-9 pr-5 text-graphite-500" colSpan={6}>
                         ↳ {p.name}
                         {p.role ? ` · ${p.role}` : ""}{" "}
                         <span className="text-graphite-400">{p.percentage}%</span>
@@ -266,7 +290,7 @@ export default function Reports() {
               ))}
               {data.investorSplit.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="px-5 py-10 text-center text-sm text-graphite-400">
+                  <td colSpan={8} className="px-5 py-10 text-center text-sm text-graphite-400">
                     No active investors
                   </td>
                 </tr>
@@ -275,8 +299,9 @@ export default function Reports() {
           </table>
         </div>
         <p className="border-t border-graphite-100 px-5 py-2.5 text-xs text-graphite-400">
-          Net share = (gross profit − shared expenses) × their % − expenses charged
-          directly to them.
+          Net share = (gross profit − shared expenses) × their % − expenses charged directly to
+          them − the company cut (taken only on a profit). Profit partners then divide the net
+          share.
         </p>
       </Card>
 

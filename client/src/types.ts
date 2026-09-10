@@ -43,9 +43,34 @@ export interface InvestorSplitRow {
   grossShare: number;
   sharedExpenseShare: number;
   chargedExpenses: number;
+  grossMemberShare: number;
+  companyCutPct: number;
+  companyCut: number;
   netShare: number;
   netLossShare: number;
   partnerSplit: PartnerShareRow[];
+}
+
+export interface Team {
+  id: string;
+  name: string;
+  companyCutPct: number;
+  createdAt: string;
+  counts?: { investors: number; transactions: number; expenses: number };
+}
+
+export interface TeamOverviewRow {
+  teamId: string;
+  name: string;
+  companyCutPct: number;
+  investors: number;
+  totalCapital: number;
+  grossProfit: number;
+  netProfit: number;
+  netLoss: number;
+  stockLeftGrams: number;
+  stockLeftValue: number;
+  companyEarnings: number;
 }
 
 export interface ProfitPartner {
@@ -59,8 +84,11 @@ export interface ReportSummary {
   overall: PeriodSummary;
   daily: PeriodSummary[];
   generatedAt: string;
+  teamId: string | null;
+  teamName: string | null;
   investorSplit: InvestorSplitRow[];
   dailyInvestorSplit: { date: string; rows: InvestorSplitRow[] }[];
+  companyEarnings: number;
   expensesByCategory: { name: string; amount: number }[];
   expensesByInvestor: { name: string; charged: number; tagged: number }[];
   totalActiveShare: number;
@@ -72,10 +100,16 @@ export interface Investor {
   name: string;
   email: string | null;
   phone: string | null;
+  teamId: string | null;
   sharePercentage: number;
   capitalInvested: number;
   currencyCode: string;
   fxRate: number;
+  /** the member's own override, or null to inherit the team default */
+  companyCutPct: number | null;
+  /** resolved: override, else the team default */
+  effectiveCompanyCutPct: number;
+  teamCompanyCutPct: number;
   partners: ProfitPartner[];
   status: "ACTIVE" | "INACTIVE";
   notes: string | null;
@@ -89,6 +123,7 @@ export interface Investor {
 export interface GoldTxn {
   id: string;
   type: "BUY" | "SELL";
+  teamId: string | null;
   date: string;
   quality: string;
   quantityGrams: number;
@@ -112,6 +147,7 @@ export interface Expense {
   id: string;
   categoryId: string;
   categoryName: string;
+  teamId: string | null;
   amount: number;
   currencyCode: string;
   fxRate: number;
@@ -147,6 +183,8 @@ export interface PortalPeriod {
   myGrossShare: number;
   mySharedExpenseShare: number;
   myChargedExpenses: number;
+  companyCutPct: number;
+  myCompanyCut: number;
   myNetShare: number;
   totalLoss: number;
   netLoss: number;
@@ -159,6 +197,8 @@ export interface PortalSummary {
     sharePercentage: number;
     capitalInvested: number;
     joinedAt: string;
+    teamName: string | null;
+    companyCutPct: number;
   };
   overall: PortalPeriod & {
     buyByQuality: QualityRow[];

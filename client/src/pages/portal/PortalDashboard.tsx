@@ -67,8 +67,15 @@ export default function PortalDashboard() {
           <div className="p-5 sm:p-6">
             <div className="font-serif text-lg font-semibold text-graphite-900">{inv.name}</div>
             <dl className="mt-5 space-y-3.5 text-sm">
+              {inv.teamName && <ProfileRow label="Team" value={inv.teamName} />}
               <ProfileRow label="Profit share" value={pct(inv.sharePercentage)} />
               <ProfileRow label="Capital invested" value={money(inv.capitalInvested)} />
+              {inv.companyCutPct > 0 && (
+                <ProfileRow
+                  label="Company share"
+                  value={`${inv.companyCutPct}% of your profit`}
+                />
+              )}
               <ProfileRow label="Joined" value={shortDate(inv.joinedAt)} />
             </dl>
           </div>
@@ -112,6 +119,13 @@ export default function PortalDashboard() {
             <PositionRow
               label="Less expenses charged to you"
               value={`− ${money(o.myChargedExpenses)}`}
+              muted
+            />
+          )}
+          {o.myCompanyCut > 0 && (
+            <PositionRow
+              label={`Less company share (${o.companyCutPct}% of your share)`}
+              value={`− ${money(o.myCompanyCut)}`}
               muted
             />
           )}

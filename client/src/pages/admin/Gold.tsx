@@ -18,6 +18,7 @@ import {
 } from "../../components/ui";
 import { grams, shortDate, dateInput } from "../../format";
 import { useCurrency, relTime } from "../../currency";
+import { useTeam } from "../../team";
 
 interface ListResp {
   transactions: GoldTxn[];
@@ -37,10 +38,13 @@ const blank = {
 
 export default function Gold() {
   const { currencies, base, byCode, fmt } = useCurrency();
+  const { activeTeamId, activeTeam } = useTeam();
   const [typeFilter, setTypeFilter] = useState("");
   const { data, loading, error, reload } = useFetch<ListResp>(
-    `/gold${typeFilter ? `?type=${typeFilter}` : ""}`,
-    [typeFilter]
+    activeTeamId
+      ? `/gold?teamId=${activeTeamId}${typeFilter ? `&type=${typeFilter}` : ""}`
+      : null,
+    [typeFilter, activeTeamId]
   );
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<GoldTxn | null>(null);
@@ -81,6 +85,7 @@ export default function Gold() {
     try {
       const payload = {
         type: form.type,
+        teamId: activeTeamId,
         date: form.date,
         quality: form.quality,
         quantityGrams: Number(form.quantityGrams),
@@ -112,6 +117,18 @@ export default function Gold() {
     }
   }
 
+  if (!activeTeamId)
+    return (
+      <>
+        <PageHeader title="Gold Trades" subtitle="Trades belong to a team." />
+        <Card>
+          <p className="px-5 py-14 text-center text-sm text-graphite-400">
+            No team selected. Create one on the <b className="text-graphite-600">Teams</b> page
+            first.
+          </p>
+        </Card>
+      </>
+    );
   if (loading) return <Spinner />;
   if (error) return <ErrorNote>{error}</ErrorNote>;
 
@@ -138,7 +155,7 @@ export default function Gold() {
     <>
       <PageHeader
         title="Gold Trades"
-        subtitle="Every purchase and sale of gold, with quality/purity and rate per gram."
+        subtitle={`${activeTeam?.name ?? "This team"} · every purchase and sale, with quality/purity and rate per gram. New trades are filed under this team.`}
         action={
           <Button onClick={openAdd}>
             <Plus size={16} /> Add trade

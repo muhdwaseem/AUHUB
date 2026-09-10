@@ -384,6 +384,59 @@ describe("investorSplit — dividing the common net pool by share %", () => {
     expect(row.netShare).toBe(-500);
     expect(row.netLossShare).toBe(500);
   });
+
+  it("with no company cut, netShare equals the pre-cut member share (unchanged behaviour)", () => {
+    const [row] = investorSplit(emptySummary({ commonNetProfit: 1_000 }), [
+      { id: "inv1", name: "Solo", sharePercentage: 100, status: "ACTIVE" },
+    ]);
+    expect(row.grossMemberShare).toBe(1_000);
+    expect(row.companyCut).toBe(0);
+    expect(row.netShare).toBe(1_000);
+  });
+});
+
+describe("investorSplit — the company's cut", () => {
+  it("takes its % off each member's share BEFORE the partner split", () => {
+    const [row] = investorSplit(emptySummary({ commonNetProfit: 1_000 }), [
+      {
+        id: "inv1",
+        name: "Shanil",
+        sharePercentage: 10, // 10% of the team
+        status: "ACTIVE",
+        companyCutPct: 50, // company takes half of Shanil's share
+        partners: [
+          { name: "Working", role: null, percentage: 50 },
+          { name: "Capital", role: null, percentage: 50 },
+        ],
+      },
+    ]);
+    expect(row.grossMemberShare).toBe(100); // 1 000 * 10%
+    expect(row.companyCutPct).toBe(50);
+    expect(row.companyCut).toBe(50); // 100 * 50%
+    expect(row.netShare).toBe(50); // 100 - 50
+    // the working/capital split is on the POST-cut 50, not the pre-cut 100
+    expect(row.partnerSplit.map((p) => p.share)).toEqual([25, 25]);
+  });
+
+  it("also nets the company cut after expenses charged to the member", () => {
+    const [row] = investorSplit(
+      emptySummary({ commonNetProfit: 1_000, chargedByInvestor: { inv1: 100 } }),
+      [{ id: "inv1", name: "Shanil", sharePercentage: 50, status: "ACTIVE", companyCutPct: 20 }]
+    );
+    expect(row.grossMemberShare).toBe(400); // 1 000 * 50% - 100 charged
+    expect(row.companyCut).toBe(80); // 400 * 20%
+    expect(row.netShare).toBe(320);
+  });
+
+  it("does NOT take a cut when the member's share is a loss — the member bears it", () => {
+    const [row] = investorSplit(emptySummary({ commonNetProfit: -1_000 }), [
+      { id: "inv1", name: "Shanil", sharePercentage: 50, status: "ACTIVE", companyCutPct: 50 },
+    ]);
+    expect(row.grossMemberShare).toBe(-500);
+    expect(row.companyCut).toBe(0);
+    expect(row.netShare).toBe(-500);
+    expect(row.netLossShare).toBe(500);
+  });
 });
 
 describe("investorSplit — second-level split among an investor's profit partners", () => {

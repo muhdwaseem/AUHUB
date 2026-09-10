@@ -5,6 +5,7 @@ import cookieParser from "cookie-parser";
 import { MulterError } from "multer";
 
 import { authRouter } from "./routes/auth.js";
+import { teamsRouter } from "./routes/teams.js";
 import { currenciesRouter } from "./routes/currencies.js";
 import { investorsRouter } from "./routes/investors.js";
 import { expenseCategoriesRouter } from "./routes/expenseCategories.js";
@@ -37,6 +38,7 @@ app.use(cookieParser());
 app.get("/api/health", (_req, res) => res.json({ ok: true, service: "crmgold-api" }));
 
 app.use("/api/auth", authRouter);
+app.use("/api/teams", teamsRouter);
 app.use("/api/currencies", currenciesRouter);
 app.use("/api/investors", investorsRouter);
 app.use("/api/expense-categories", expenseCategoriesRouter);

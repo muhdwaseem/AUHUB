@@ -19,6 +19,7 @@ import {
 import { AttachmentLink } from "../../components/AttachmentLink";
 import { shortDate, dateInput } from "../../format";
 import { useCurrency, relTime } from "../../currency";
+import { useTeam } from "../../team";
 
 interface ListResp {
   expenses: Expense[];
@@ -41,13 +42,19 @@ const blankForm = {
 
 export default function Expenses() {
   const { currencies, base, byCode, fmt } = useCurrency();
+  const { activeTeamId, activeTeam } = useTeam();
   const [catFilter, setCatFilter] = useState("");
   const { data: cats } = useFetch<Category[]>("/expense-categories");
-  const { data: investorsResp } = useFetch<InvestorsResp>("/investors");
+  const { data: investorsResp } = useFetch<InvestorsResp>(
+    activeTeamId ? `/investors?teamId=${activeTeamId}` : null,
+    [activeTeamId]
+  );
   const investors = investorsResp?.investors ?? [];
   const { data, loading, error, reload } = useFetch<ListResp>(
-    `/expenses${catFilter ? `?categoryId=${catFilter}` : ""}`,
-    [catFilter]
+    activeTeamId
+      ? `/expenses?teamId=${activeTeamId}${catFilter ? `&categoryId=${catFilter}` : ""}`
+      : null,
+    [catFilter, activeTeamId]
   );
 
   const [open, setOpen] = useState(false);
@@ -108,6 +115,7 @@ export default function Expenses() {
       } else {
         const fd = new FormData();
         fd.append("categoryId", form.categoryId);
+        fd.append("teamId", activeTeamId ?? "");
         fd.append("amount", form.amount);
         fd.append("currencyCode", form.currencyCode);
         fd.append("fxRate", String(fxRate));
@@ -147,6 +155,18 @@ export default function Expenses() {
     }
   }
 
+  if (!activeTeamId)
+    return (
+      <>
+        <PageHeader title="Expenses" subtitle="Expenses belong to a team." />
+        <Card>
+          <p className="px-5 py-14 text-center text-sm text-graphite-400">
+            No team selected. Create one on the <b className="text-graphite-600">Teams</b> page
+            first.
+          </p>
+        </Card>
+      </>
+    );
   if (loading) return <Spinner />;
   if (error) return <ErrorNote>{error}</ErrorNote>;
 
@@ -154,7 +174,7 @@ export default function Expenses() {
     <>
       <PageHeader
         title="Expenses"
-        subtitle="Flights, travel, visa, hotels and any custom header — attach payment slips and invoices, and optionally tie an expense to an investor."
+        subtitle={`${activeTeam?.name ?? "This team"} · flights, travel, visa, hotels and custom headers. New expenses are filed under this team.`}
         action={
           <Button onClick={openAdd} disabled={!cats?.length}>
             <Plus size={16} /> Add expense

@@ -89,7 +89,12 @@ export interface InvestorSplitRow {
   grossShare: number;
   sharedExpenseShare: number; // their % of the pooled expenses
   chargedExpenses: number; // expenses charged directly to them
-  netShare: number; // commonNetProfit * frac - chargedExpenses
+  /** commonNetProfit * frac - chargedExpenses — the member's earnings BEFORE the
+   *  company takes its cut. Negative on a losing period. */
+  grossMemberShare: number;
+  companyCutPct: number; // % the company takes from a positive grossMemberShare
+  companyCut: number; // grossMemberShare * companyCutPct/100, or 0 when the share is a loss
+  netShare: number; // grossMemberShare - companyCut  (what the member + their partners keep)
   netLossShare: number;
   /** Second-level split of this investor's net share. Empty = investor keeps 100%. */
   partnerSplit: PartnerShareRow[];
@@ -99,6 +104,17 @@ export interface PartnerInput {
   name: string;
   role?: string | null;
   percentage: number;
+}
+
+export interface InvestorInput {
+  id: string;
+  name: string;
+  sharePercentage: number;
+  status: string;
+  /** Effective company cut % for this member (their override, else the team
+   *  default). 0 = the company takes nothing. */
+  companyCutPct?: number;
+  partners?: PartnerInput[];
 }
 
 const round = (n: number, dp = 2) => {
@@ -248,21 +264,25 @@ export function buildReport(txns: TxnInput[], expenses: ExpenseInput[]): FullRep
 
 export function investorSplit(
   summary: PeriodSummary,
-  investors: {
-    id: string;
-    name: string;
-    sharePercentage: number;
-    status: string;
-    partners?: PartnerInput[];
-  }[]
+  investors: InvestorInput[]
 ): InvestorSplitRow[] {
   return investors
     .filter((i) => i.status === "ACTIVE")
     .map((i) => {
       const frac = (i.sharePercentage || 0) / 100;
       const charged = round(summary.chargedByInvestor[i.id] ?? 0);
-      const netShare = round(summary.commonNetProfit * frac - charged);
-      // Second level: divide the investor's net share among their partners.
+
+      // What the member earns from the pool, before the company's cut.
+      const grossMemberShare = round(summary.commonNetProfit * frac - charged);
+
+      // The company takes its cut only from a POSITIVE share — it does not share
+      // in a losing period. A member with a negative share bears the whole loss.
+      const companyCutPct = i.companyCutPct || 0;
+      const companyCut =
+        grossMemberShare > 0 ? round((grossMemberShare * companyCutPct) / 100) : 0;
+      const netShare = round(grossMemberShare - companyCut);
+
+      // Third level: divide what's left among the member's profit partners.
       // Last partner absorbs the rounding remainder so the parts always re-sum.
       const partners = i.partners ?? [];
       let allocated = 0;
@@ -281,6 +301,9 @@ export function investorSplit(
         grossShare: round(summary.grossProfit * frac),
         sharedExpenseShare: round(summary.sharedExpenses * frac),
         chargedExpenses: charged,
+        grossMemberShare,
+        companyCutPct,
+        companyCut,
         netShare,
         netLossShare: netShare < 0 ? round(-netShare) : 0,
         partnerSplit,

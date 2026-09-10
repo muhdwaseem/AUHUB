@@ -8,6 +8,7 @@ goldRouter.use(authRequired, adminRequired);
 
 const txnSchema = z.object({
   type: z.enum(["BUY", "SELL"]),
+  teamId: z.string().trim().min(1).optional(),
   date: z.coerce.date(),
   quality: z.string().min(1, "Quality / purity is required"),
   quantityGrams: z.coerce.number().positive("Quantity must be greater than 0"),
@@ -26,8 +27,9 @@ async function resolveCurrency(code: string, fxRate?: number) {
 }
 
 goldRouter.get("/", async (req, res) => {
-  const { from, to, type } = req.query as Record<string, string>;
+  const { from, to, type, teamId } = req.query as Record<string, string>;
   const where: any = {};
+  if (teamId) where.teamId = teamId;
   if (from || to) where.date = {};
   if (from) where.date.gte = new Date(from);
   if (to) where.date.lte = new Date(to);
@@ -41,11 +43,15 @@ goldRouter.post("/", async (req, res) => {
   if (!parsed.success)
     return res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Invalid data" });
   const d = parsed.data;
+  if (!d.teamId) return res.status(400).json({ error: "A team is required" });
+  const team = await prisma.team.findUnique({ where: { id: d.teamId } });
+  if (!team) return res.status(400).json({ error: "Selected team not found" });
   const cur = await resolveCurrency(d.currencyCode ?? "AED", d.fxRate);
   if (!cur) return res.status(400).json({ error: `Unknown currency "${d.currencyCode}"` });
   const txn = await prisma.goldTransaction.create({
     data: {
       type: d.type,
+      teamId: d.teamId,
       date: d.date,
       quality: d.quality.trim(),
       quantityGrams: d.quantityGrams,

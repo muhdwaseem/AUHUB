@@ -8,6 +8,8 @@ import { makePassword, makeUsername } from "../lib/credentials.js";
 export const investorsRouter = Router();
 investorsRouter.use(authRequired, adminRequired);
 
+const round2 = (n: number) => Math.round(n * 100) / 100;
+
 const partnerSchema = z.object({
   name: z.string().trim().min(1, "Partner name is required"),
   role: z.string().trim().optional().or(z.literal("")),
@@ -18,10 +20,15 @@ const investorSchema = z.object({
   name: z.string().min(1, "Name is required"),
   email: z.string().email().optional().or(z.literal("")),
   phone: z.string().optional().or(z.literal("")),
-  sharePercentage: z.coerce.number().min(0).max(100),
+  /** The team this investor belongs to. Required on create. */
+  teamId: z.string().trim().min(1).optional(),
+  /** Capital drives the share — the % is derived, never sent by the client. */
   capitalInvested: z.coerce.number().min(0).optional(),
   currencyCode: z.string().trim().toUpperCase().optional(),
   fxRate: z.coerce.number().positive().optional(),
+  /** Per-member override of the team's company cut %. null = inherit the team
+   *  default; undefined (on PUT) = leave unchanged. */
+  companyCutPct: z.coerce.number().min(0).max(100).nullable().optional(),
   notes: z.string().optional().or(z.literal("")),
   status: z.enum(["ACTIVE", "INACTIVE"]).optional(),
   /** Second-level profit split. Empty = investor keeps 100% of their share. */
@@ -50,16 +57,51 @@ async function resolveCurrency(code: string, fxRate?: number) {
   return { code: cur.code, fxRate: cur.isBase ? 1 : (fxRate ?? cur.rate) };
 }
 
+/**
+ * Recompute every member's sharePercentage for a team as their capital (in the
+ * base currency) ÷ the team's total capital. The last member (by join order)
+ * absorbs the rounding remainder so an all-members total is exactly 100.
+ */
+async function recomputeShares(teamId: string) {
+  const members = await prisma.investor.findMany({
+    where: { teamId },
+    orderBy: { createdAt: "asc" },
+  });
+  const base = (m: { capitalInvested: number; fxRate: number | null }) =>
+    (m.capitalInvested || 0) * (m.fxRate ?? 1);
+  const totalCapital = members.reduce((s, m) => s + base(m), 0);
+
+  let allocated = 0;
+  const updates = members.map((m, idx) => {
+    const isLast = idx === members.length - 1;
+    let pct = 0;
+    if (totalCapital > 0) {
+      pct = isLast ? round2(100 - allocated) : round2((base(m) / totalCapital) * 100);
+    }
+    allocated = round2(allocated + pct);
+    return prisma.investor.update({
+      where: { id: m.id },
+      data: { sharePercentage: pct },
+    });
+  });
+  if (updates.length) await prisma.$transaction(updates);
+}
+
 function publicInvestor(inv: any) {
+  const teamDefault = inv.team?.companyCutPct ?? 0;
   return {
     id: inv.id,
     name: inv.name,
     email: inv.email,
     phone: inv.phone,
-    sharePercentage: inv.sharePercentage,
+    teamId: inv.teamId,
+    sharePercentage: inv.sharePercentage, // derived, read-only
     capitalInvested: inv.capitalInvested,
     currencyCode: inv.currencyCode ?? "AED",
     fxRate: inv.fxRate ?? 1,
+    companyCutPct: inv.companyCutPct ?? null, // the member's own override, or null
+    effectiveCompanyCutPct: inv.companyCutPct ?? teamDefault,
+    teamCompanyCutPct: teamDefault,
     status: inv.status,
     notes: inv.notes,
     joinedAt: inv.joinedAt,
@@ -77,52 +119,70 @@ function publicInvestor(inv: any) {
   };
 }
 
-// List
-investorsRouter.get("/", async (_req, res) => {
+const withRelations = {
+  user: true,
+  team: true,
+  partners: { orderBy: { createdAt: "asc" as const } },
+};
+
+// List — scoped to a team when ?teamId= is given
+investorsRouter.get("/", async (req, res) => {
+  const teamId = (req.query.teamId as string) || undefined;
   const investors = await prisma.investor.findMany({
-    include: { user: true, partners: { orderBy: { createdAt: "asc" } } },
+    where: teamId ? { teamId } : undefined,
+    include: withRelations,
     orderBy: { createdAt: "asc" },
   });
   const totalShare = investors
     .filter((i) => i.status === "ACTIVE")
     .reduce((s, i) => s + i.sharePercentage, 0);
-  res.json({ investors: investors.map(publicInvestor), totalActiveShare: totalShare });
+  res.json({
+    investors: investors.map(publicInvestor),
+    totalActiveShare: Math.round(totalShare * 100) / 100,
+  });
 });
 
 // Get one
 investorsRouter.get("/:id", async (req, res) => {
   const inv = await prisma.investor.findUnique({
     where: { id: req.params.id },
-    include: { user: true, partners: { orderBy: { createdAt: "asc" } } },
+    include: withRelations,
   });
   if (!inv) return res.status(404).json({ error: "Investor not found" });
   res.json(publicInvestor(inv));
 });
 
-// Create (auto-generates a login)
+// Create (auto-generates a login, then recomputes the team's shares)
 investorsRouter.post("/", async (req, res) => {
   const parsed = investorSchema.safeParse(req.body);
   if (!parsed.success)
     return res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Invalid data" });
 
   const d = parsed.data;
+  if (!d.teamId) return res.status(400).json({ error: "A team is required" });
+  const team = await prisma.team.findUnique({ where: { id: d.teamId } });
+  if (!team) return res.status(400).json({ error: "Selected team not found" });
+
   const cur = await resolveCurrency(d.currencyCode ?? "AED", d.fxRate);
   if (!cur) return res.status(400).json({ error: `Unknown currency "${d.currencyCode}"` });
   const partnerErr = validatePartners(d.partners);
   if (partnerErr) return res.status(400).json({ error: partnerErr });
+
   const username = makeUsername(d.name);
   const password = makePassword();
   const hash = await bcrypt.hash(password, 10);
 
-  const inv = await prisma.investor.create({
+  const created = await prisma.investor.create({
     data: {
       name: d.name,
       email: d.email || null,
       phone: d.phone || null,
-      sharePercentage: d.sharePercentage,
+      teamId: d.teamId,
+      sharePercentage: 0, // set by recomputeShares below
       capitalInvested: d.capitalInvested ?? 0,
       currencyCode: cur.code,
       fxRate: cur.fxRate,
+      companyCutPct: d.companyCutPct ?? null,
       notes: d.notes || null,
       status: d.status ?? "ACTIVE",
       generatedUsername: username,
@@ -132,9 +192,14 @@ investorsRouter.post("/", async (req, res) => {
       },
       partners: { create: partnerData(d.partners) },
     },
-    include: { user: true, partners: { orderBy: { createdAt: "asc" } } },
   });
 
+  await recomputeShares(d.teamId);
+
+  const inv = await prisma.investor.findUnique({
+    where: { id: created.id },
+    include: withRelations,
+  });
   res.status(201).json(publicInvestor(inv));
 });
 
@@ -147,6 +212,12 @@ investorsRouter.put("/:id", async (req, res) => {
   if (!existing) return res.status(404).json({ error: "Investor not found" });
 
   const d = parsed.data;
+
+  if (d.teamId && d.teamId !== existing.teamId) {
+    const team = await prisma.team.findUnique({ where: { id: d.teamId } });
+    if (!team) return res.status(400).json({ error: "Selected team not found" });
+  }
+
   let currencyCode: string | undefined;
   let fxRate: number | undefined;
   if (d.currencyCode !== undefined || d.fxRate !== undefined) {
@@ -170,10 +241,11 @@ investorsRouter.put("/:id", async (req, res) => {
       name: d.name ?? undefined,
       email: d.email === undefined ? undefined : d.email || null,
       phone: d.phone === undefined ? undefined : d.phone || null,
-      sharePercentage: d.sharePercentage ?? undefined,
+      teamId: d.teamId ?? undefined,
       capitalInvested: d.capitalInvested ?? undefined,
       currencyCode,
       fxRate,
+      companyCutPct: d.companyCutPct === undefined ? undefined : d.companyCutPct,
       notes: d.notes === undefined ? undefined : d.notes || null,
       status: d.status ?? undefined,
       // Replace-all: only touch partners when the client sends the array.
@@ -183,6 +255,12 @@ investorsRouter.put("/:id", async (req, res) => {
     },
     include: { user: true },
   });
+
+  // Any change to capital / fx / status / team shifts the derived shares.
+  const teamsToRecompute = new Set<string>();
+  if (existing.teamId) teamsToRecompute.add(existing.teamId);
+  if (inv.teamId) teamsToRecompute.add(inv.teamId);
+  for (const t of teamsToRecompute) await recomputeShares(t);
 
   // Keep the login in sync when the investor is deactivated / reactivated.
   if (d.status && inv.user) {
@@ -196,7 +274,7 @@ investorsRouter.put("/:id", async (req, res) => {
     publicInvestor(
       await prisma.investor.findUnique({
         where: { id: inv.id },
-        include: { user: true, partners: { orderBy: { createdAt: "asc" } } },
+        include: withRelations,
       })
     )
   );
@@ -228,7 +306,7 @@ investorsRouter.post("/:id/regenerate-credentials", async (req, res) => {
   const updated = await prisma.investor.update({
     where: { id: inv.id },
     data: { generatedUsername: username, generatedPassword: password },
-    include: { user: true },
+    include: withRelations,
   });
   res.json(publicInvestor(updated));
 });
@@ -258,10 +336,11 @@ investorsRouter.post("/:id/ack-credentials", async (req, res) => {
   res.json({ ok: true });
 });
 
-// Delete (also removes the login, cascade)
+// Delete (also removes the login, cascade) then rebalance the team's shares
 investorsRouter.delete("/:id", async (req, res) => {
   const inv = await prisma.investor.findUnique({ where: { id: req.params.id } });
   if (!inv) return res.status(404).json({ error: "Investor not found" });
   await prisma.investor.delete({ where: { id: req.params.id } });
+  if (inv.teamId) await recomputeShares(inv.teamId);
   res.json({ ok: true });
 });

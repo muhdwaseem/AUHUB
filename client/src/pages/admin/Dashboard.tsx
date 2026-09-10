@@ -7,6 +7,7 @@ import { PageHeader, Dot } from "../../components/AppShell";
 import { Spinner, ErrorNote } from "../../components/ui";
 import { WorldMap } from "../../components/WorldMap";
 import { money, grams, num, pct, shortDate } from "../../format";
+import { useTeam } from "../../team";
 
 /* ── tile shell (frosted glass) ── */
 function Tile({ area, className = "", children }: { area: string; className?: string; children: ReactNode }) {
@@ -291,9 +292,17 @@ function TrendChart({ daily }: { daily: ReportSummary["daily"] }) {
 }
 
 export default function Dashboard() {
-  const { data: s, loading, error } = useFetch<ReportSummary>("/reports/summary");
-  const { data: g } = useFetch<{ transactions: GoldTxn[] }>("/gold");
+  const { activeTeamId } = useTeam();
+  const { data: s, loading, error } = useFetch<ReportSummary>(
+    activeTeamId ? `/reports/summary?teamId=${activeTeamId}` : null,
+    [activeTeamId]
+  );
+  const { data: g } = useFetch<{ transactions: GoldTxn[] }>(
+    activeTeamId ? `/gold?teamId=${activeTeamId}` : null,
+    [activeTeamId]
+  );
 
+  if (!activeTeamId) return <ErrorNote>Select a team first.</ErrorNote>;
   if (loading) return <Spinner />;
   if (error) return <ErrorNote>{error}</ErrorNote>;
   if (!s) return null;
