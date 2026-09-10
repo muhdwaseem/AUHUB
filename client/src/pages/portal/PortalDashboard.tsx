@@ -136,14 +136,14 @@ export default function PortalDashboard() {
         <Card title="How your share is divided" className="mt-6">
           <dl className="divide-y divide-ink-700 text-sm">
             {o.partnerSplit.map((p, i) => (
-              <div key={i} className="flex items-center justify-between px-5 py-3">
-                <span className="text-graphite-700">
+              <div key={i} className="flex items-baseline justify-between gap-3 px-4 py-3 sm:px-5">
+                <span className="min-w-0 text-graphite-700">
                   {p.name}
                   {p.role ? ` · ${p.role}` : ""}{" "}
                   <span className="text-graphite-400">{p.percentage}%</span>
                 </span>
                 <span
-                  className={`tnum font-medium ${p.share < 0 ? "text-negative" : "text-accent-text"}`}
+                  className={`tnum shrink-0 whitespace-nowrap font-medium ${p.share < 0 ? "text-negative" : "text-accent-text"}`}
                 >
                   {money(p.share)}
                 </span>
@@ -301,9 +301,9 @@ export default function PortalDashboard() {
 
 function ProfileRow({ label, value }: { label: string; value: ReactNode }) {
   return (
-    <div className="flex items-baseline justify-between gap-4">
-      <dt className="text-graphite-500">{label}</dt>
-      <dd className="font-medium text-graphite-900">{value}</dd>
+    <div className="flex items-baseline justify-between gap-3">
+      <dt className="min-w-0 text-graphite-500">{label}</dt>
+      <dd className="shrink-0 whitespace-nowrap font-medium text-graphite-900">{value}</dd>
     </div>
   );
 }
@@ -324,11 +324,11 @@ function PositionRow({
   const toneCls =
     tone === "accent" ? "text-accent-text" : tone === "negative" ? "text-negative" : "text-graphite-900";
   return (
-    <div className="flex items-baseline justify-between gap-4 px-5 py-3">
-      <dt className={`${strong ? "font-semibold text-graphite-900" : "text-graphite-600"}`}>
+    <div className="flex items-baseline justify-between gap-3 px-4 py-3 sm:px-5">
+      <dt className={`min-w-0 ${strong ? "font-semibold text-graphite-900" : "text-graphite-600"}`}>
         {label}
       </dt>
-      <dd className={`tnum ${strong ? "text-base font-semibold" : "font-medium"} ${muted ? "text-graphite-500" : toneCls}`}>
+      <dd className={`tnum shrink-0 whitespace-nowrap ${strong ? "text-base font-semibold" : "font-medium"} ${muted ? "text-graphite-500" : toneCls}`}>
         {value}
       </dd>
     </div>
