@@ -34,6 +34,8 @@ interface ListResp {
   totalActiveShare: number;
 }
 
+type PartnerRow = { name: string; role: string; percentage: string };
+
 const blank = {
   name: "",
   email: "",
@@ -44,6 +46,7 @@ const blank = {
   fxRate: "1",
   notes: "",
   status: "ACTIVE" as "ACTIVE" | "INACTIVE",
+  partners: [] as PartnerRow[],
 };
 
 export default function Investors() {
@@ -77,13 +80,25 @@ export default function Investors() {
       fxRate: String(inv.fxRate ?? 1),
       notes: inv.notes ?? "",
       status: inv.status,
+      partners: (inv.partners ?? []).map((p) => ({
+        name: p.name,
+        role: p.role ?? "",
+        percentage: String(p.percentage),
+      })),
     });
     setFormErr("");
     setFormOpen(true);
   }
 
+  const partnerTotal = form.partners.reduce((s, p) => s + Number(p.percentage || 0), 0);
+  const partnersValid = form.partners.length === 0 || Math.abs(partnerTotal - 100) < 0.1;
+
   async function submit(e: FormEvent) {
     e.preventDefault();
+    if (!partnersValid) {
+      setFormErr(`Profit partners must total 100% (currently ${partnerTotal.toFixed(2)}%).`);
+      return;
+    }
     setBusy(true);
     setFormErr("");
     try {
@@ -97,6 +112,11 @@ export default function Investors() {
         fxRate: form.currencyCode === base.code ? 1 : Number(form.fxRate || 1),
         notes: form.notes,
         status: form.status,
+        partners: form.partners.map((p) => ({
+          name: p.name.trim(),
+          role: p.role.trim(),
+          percentage: Number(p.percentage || 0),
+        })),
       };
       if (editing) {
         await api.put(`/investors/${editing.id}`, payload);
@@ -167,9 +187,8 @@ export default function Investors() {
 
   const totalShare = data?.totalActiveShare ?? 0;
 
-  const plById = new Map(
-    (report?.investorSplit ?? []).map((r) => [r.investorId, r.netShare])
-  );
+  const splitById = new Map((report?.investorSplit ?? []).map((r) => [r.investorId, r]));
+  const plById = new Map((report?.investorSplit ?? []).map((r) => [r.investorId, r.netShare]));
 
   /** Running balance (in the base currency) = capital converted to base + their
    *  net profit share to date. */
@@ -189,6 +208,34 @@ export default function Investors() {
           </span>
         )}
       </span>
+    );
+  };
+
+  /** Partner breakdown of an investor's share (from the report when available,
+   *  otherwise just the configured percentages). */
+  const partnersLine = (inv: Investor) => {
+    if (!inv.partners || inv.partners.length === 0) return null;
+    const rows = splitById.get(inv.id)?.partnerSplit;
+    return (
+      <div className="mt-1 space-y-0.5 text-[11px] text-graphite-400">
+        {inv.partners.map((p, i) => {
+          const amt = rows?.[i]?.share;
+          return (
+            <div key={p.id} className="flex justify-between gap-2">
+              <span className="truncate">
+                {p.name}
+                {p.role ? ` · ${p.role}` : ""}{" "}
+                <span className="text-graphite-500">{p.percentage}%</span>
+              </span>
+              {amt !== undefined && (
+                <span className={`tnum ${amt < 0 ? "text-negative" : "text-graphite-600"}`}>
+                  {fmt(amt)}
+                </span>
+              )}
+            </div>
+          );
+        })}
+      </div>
     );
   };
 
@@ -315,6 +362,7 @@ export default function Investors() {
                   {inv.username} · {inv.email || "—"} · {inv.phone || "—"}
                 </div>
               </div>
+              {partnersLine(inv)}
               {inv.generatedPassword && <div className="mt-2">{credsButton(inv)}</div>}
               <div className="mt-2 border-t border-graphite-100 pt-1.5">{rowActions(inv)}</div>
             </div>
@@ -361,6 +409,7 @@ export default function Investors() {
                   <td className="px-5 py-3 text-right">
                     <div className="tnum text-graphite-600">{fmt(inv.capitalInvested, inv.currencyCode)}</div>
                     <div className="mt-0.5">{balanceLine(inv)}</div>
+                    <div className="text-left">{partnersLine(inv)}</div>
                   </td>
                   <td className="px-5 py-3">
                     {loginBadge(inv)}
@@ -459,6 +508,88 @@ export default function Investors() {
               </Field>
             )}
           </div>
+          {/* Profit partners — second-level split of this investor's share */}
+          <div className="rounded-lg border border-graphite-100 p-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-medium text-graphite-500">Profit partners</span>
+              {form.partners.length > 0 && (
+                <span
+                  className={`text-[11px] font-semibold ${
+                    partnersValid ? "text-positive" : "text-warning"
+                  }`}
+                >
+                  {partnerTotal.toFixed(2)}% {partnersValid ? "✓" : "— must total 100%"}
+                </span>
+              )}
+            </div>
+            <p className="mt-0.5 text-[11px] text-graphite-400">
+              Split this investor’s profit share between people (e.g. capital vs. the person
+              working the investment). Leave empty if they keep 100%.
+            </p>
+
+            {form.partners.map((p, i) => (
+              <div key={i} className="mt-2 flex items-start gap-2">
+                <Input
+                  placeholder="Name"
+                  value={p.name}
+                  onChange={(e) => {
+                    const next = [...form.partners];
+                    next[i] = { ...p, name: e.target.value };
+                    setForm({ ...form, partners: next });
+                  }}
+                  className="flex-1"
+                />
+                <Input
+                  placeholder="Role"
+                  value={p.role}
+                  onChange={(e) => {
+                    const next = [...form.partners];
+                    next[i] = { ...p, role: e.target.value };
+                    setForm({ ...form, partners: next });
+                  }}
+                  className="w-24"
+                />
+                <Input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  max="100"
+                  placeholder="%"
+                  value={p.percentage}
+                  onChange={(e) => {
+                    const next = [...form.partners];
+                    next[i] = { ...p, percentage: e.target.value };
+                    setForm({ ...form, partners: next });
+                  }}
+                  className="w-16"
+                />
+                <button
+                  type="button"
+                  onClick={() =>
+                    setForm({ ...form, partners: form.partners.filter((_, j) => j !== i) })
+                  }
+                  aria-label="Remove partner"
+                  className="mt-1 flex h-9 w-9 flex-none items-center justify-center rounded-md text-graphite-400 hover:bg-red-500/10 hover:text-negative"
+                >
+                  <Trash2 size={14} />
+                </button>
+              </div>
+            ))}
+
+            <button
+              type="button"
+              onClick={() =>
+                setForm({
+                  ...form,
+                  partners: [...form.partners, { name: "", role: "", percentage: "" }],
+                })
+              }
+              className="mt-2 inline-flex items-center gap-1 text-[12px] font-semibold text-graphite-600 hover:text-accent-text"
+            >
+              <Plus size={13} /> Add partner
+            </button>
+          </div>
+
           {editing && (
             <Field label="Status" hint="Inactive also invalidates the login">
               <select
@@ -490,7 +621,7 @@ export default function Investors() {
             <Button type="button" variant="secondary" onClick={() => setFormOpen(false)}>
               Cancel
             </Button>
-            <Button type="submit" disabled={busy}>
+            <Button type="submit" disabled={busy || !partnersValid}>
               {busy ? "Saving…" : editing ? "Save changes" : "Create investor"}
             </Button>
           </div>

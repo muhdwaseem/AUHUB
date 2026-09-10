@@ -539,20 +539,36 @@ export default function Dashboard() {
                 "linear-gradient(145deg,var(--color-gold-lo),#6E4B18)",
               ];
               return (
-                <div key={r.investorId} className="flex items-center gap-2.5 rounded-full bg-ink-900 py-[7px] pl-[7px] pr-3.5">
-                  <div
-                    className="grid h-8 w-8 flex-none place-items-center rounded-full font-serif text-[12px] font-semibold text-chrome-950"
-                    style={{ background: grads[i % grads.length] }}
-                  >
-                    {r.name.split(" ").map((w) => w[0]).slice(0, 2).join("")}
+                <div key={r.investorId}>
+                  <div className="flex items-center gap-2.5 rounded-full bg-ink-900 py-[7px] pl-[7px] pr-3.5">
+                    <div
+                      className="grid h-8 w-8 flex-none place-items-center rounded-full font-serif text-[12px] font-semibold text-chrome-950"
+                      style={{ background: grads[i % grads.length] }}
+                    >
+                      {r.name.split(" ").map((w) => w[0]).slice(0, 2).join("")}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <b className="block truncate text-[12.5px] font-semibold text-graphite-900">{r.name}</b>
+                      <small className="font-mono text-[10.5px] text-graphite-500">{num(r.sharePercentage, 0)}% share</small>
+                    </div>
+                    <div className={`whitespace-nowrap font-mono text-[12.5px] font-semibold tabular-nums ${r.netShare >= 0 ? "text-graphite-900" : "text-negative"}`}>
+                      {num(r.netShare)}
+                    </div>
                   </div>
-                  <div className="min-w-0 flex-1">
-                    <b className="block truncate text-[12.5px] font-semibold text-graphite-900">{r.name}</b>
-                    <small className="font-mono text-[10.5px] text-graphite-500">{num(r.sharePercentage, 0)}% share</small>
-                  </div>
-                  <div className={`whitespace-nowrap font-mono text-[12.5px] font-semibold tabular-nums ${r.netShare >= 0 ? "text-graphite-900" : "text-negative"}`}>
-                    {num(r.netShare)}
-                  </div>
+                  {r.partnerSplit.map((p, j) => (
+                    <div
+                      key={j}
+                      className="flex items-baseline justify-between gap-2 pl-11 pr-3.5 pt-1 font-mono text-[10.5px] text-graphite-500"
+                    >
+                      <span className="truncate">
+                        ↳ {p.name}
+                        {p.role ? ` · ${p.role}` : ""} {p.percentage}%
+                      </span>
+                      <span className={`tabular-nums ${p.share < 0 ? "text-negative" : "text-graphite-700"}`}>
+                        {num(p.share)}
+                      </span>
+                    </div>
+                  ))}
                 </div>
               );
             })}

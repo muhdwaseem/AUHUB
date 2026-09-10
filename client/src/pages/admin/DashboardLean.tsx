@@ -132,6 +132,42 @@ export default function DashboardLean() {
         )}
       </div>
 
+      {s.investorSplit.length > 0 && (
+        <Card title="Profit distribution" className="mt-4">
+          <div className="space-y-2 p-4 text-[13px]">
+            <div className="flex justify-between border-b border-graphite-100 pb-2 font-semibold">
+              <span className="text-graphite-800">Book net profit</span>
+              <span className={`tnum ${o.netProfit >= 0 ? "text-positive" : "text-negative"}`}>
+                {money(o.netProfit)}
+              </span>
+            </div>
+            {s.investorSplit.map((r) => (
+              <div key={r.investorId}>
+                <div className="flex justify-between">
+                  <span className="text-graphite-700">
+                    {r.name} <span className="text-graphite-400">· {pct(r.sharePercentage)}</span>
+                  </span>
+                  <span className={`tnum font-medium ${r.netShare >= 0 ? "text-graphite-900" : "text-negative"}`}>
+                    {money(r.netShare)}
+                  </span>
+                </div>
+                {r.partnerSplit.map((p, i) => (
+                  <div key={i} className="flex justify-between pl-4 text-[12px] text-graphite-400">
+                    <span className="truncate">
+                      ↳ {p.name}
+                      {p.role ? ` · ${p.role}` : ""} <span className="text-graphite-500">{p.percentage}%</span>
+                    </span>
+                    <span className={`tnum ${p.share < 0 ? "text-negative" : "text-graphite-600"}`}>
+                      {money(p.share)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+
       {cats.length > 0 && (
         <Card title="Expenses by header" className="mt-4">
           <div className="space-y-3 p-4">

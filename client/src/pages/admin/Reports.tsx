@@ -128,6 +128,32 @@ export default function Reports() {
         <Stat label="Total Loss (gross)" value={money(o.totalLoss)} tone={o.totalLoss > 0 ? "negative" : "default"} />
       </div>
 
+      {/* How the profit is calculated */}
+      <Card title="How the profit is divided" className="mt-6">
+        <div className="space-y-1.5 p-4 text-[13px]">
+          <div className="flex justify-between">
+            <span className="text-graphite-600">Gross profit (sale value − cost of gold sold)</span>
+            <span className={`tnum ${o.grossProfit >= 0 ? "" : "text-negative"}`}>{money(o.grossProfit)}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-graphite-600">− Shared expenses (from the common pool)</span>
+            <span className="tnum text-graphite-500">−{money(o.sharedExpenses)}</span>
+          </div>
+          <div className="flex justify-between border-t border-graphite-100 pt-1.5 font-semibold">
+            <span className="text-graphite-800">= Common net pool (split by investor %)</span>
+            <span className={`tnum ${o.commonNetProfit >= 0 ? "text-positive" : "text-negative"}`}>
+              {money(o.commonNetProfit)}
+            </span>
+          </div>
+          <p className="pt-1.5 text-[12px] leading-relaxed text-graphite-400">
+            Each investor’s <b className="font-semibold text-graphite-600">net share</b> = common net pool ×
+            their % − any expenses charged directly to them. Where an investor has{" "}
+            <b className="font-semibold text-graphite-600">profit partners</b>, that net share is then
+            divided again by the partner percentages (shown indented below).
+          </p>
+        </div>
+      </Card>
+
       {/* Investor split */}
       <Card title="Profit split by investor (overall)" className="mt-6">
         {/* mobile: card per investor */}
@@ -169,6 +195,22 @@ export default function Reports() {
                   <span className="tnum text-negative">{money(s.netLossShare)}</span>
                 </div>
               )}
+              {s.partnerSplit.length > 0 && (
+                <div className="mt-1.5 space-y-0.5 border-t border-graphite-100 pt-1.5 text-[11.5px]">
+                  {s.partnerSplit.map((p, i) => (
+                    <div key={i} className="flex items-baseline justify-between gap-2 text-graphite-400">
+                      <span className="truncate">
+                        ↳ {p.name}
+                        {p.role ? ` · ${p.role}` : ""}{" "}
+                        <span className="text-graphite-500">{p.percentage}%</span>
+                      </span>
+                      <span className={`tnum ${p.share < 0 ? "text-negative" : "text-graphite-600"}`}>
+                        {money(p.share)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -189,23 +231,38 @@ export default function Reports() {
             </thead>
             <tbody className="divide-y divide-graphite-50">
               {data.investorSplit.map((s) => (
-                <tr key={s.investorId}>
-                  <td className="px-5 py-3 font-medium text-graphite-700">{s.name}</td>
-                  <td className="px-4 py-3 text-right tnum text-accent-text">{pct(s.sharePercentage)}</td>
-                  <td className="px-4 py-3 text-right tnum">{money(s.grossShare)}</td>
-                  <td className="px-4 py-3 text-right tnum text-graphite-500">
-                    −{money(s.sharedExpenseShare)}
-                  </td>
-                  <td className="px-4 py-3 text-right tnum text-warning">
-                    {s.chargedExpenses > 0 ? `−${money(s.chargedExpenses)}` : "—"}
-                  </td>
-                  <td className={`px-4 py-3 text-right tnum font-medium ${s.netShare >= 0 ? "text-positive" : "text-negative"}`}>
-                    {money(s.netShare)}
-                  </td>
-                  <td className="px-4 py-3 text-right tnum text-negative">
-                    {s.netLossShare > 0 ? money(s.netLossShare) : "—"}
-                  </td>
-                </tr>
+                <Fragment key={s.investorId}>
+                  <tr>
+                    <td className="px-5 py-3 font-medium text-graphite-700">{s.name}</td>
+                    <td className="px-4 py-3 text-right tnum text-accent-text">{pct(s.sharePercentage)}</td>
+                    <td className="px-4 py-3 text-right tnum">{money(s.grossShare)}</td>
+                    <td className="px-4 py-3 text-right tnum text-graphite-500">
+                      −{money(s.sharedExpenseShare)}
+                    </td>
+                    <td className="px-4 py-3 text-right tnum text-warning">
+                      {s.chargedExpenses > 0 ? `−${money(s.chargedExpenses)}` : "—"}
+                    </td>
+                    <td className={`px-4 py-3 text-right tnum font-medium ${s.netShare >= 0 ? "text-positive" : "text-negative"}`}>
+                      {money(s.netShare)}
+                    </td>
+                    <td className="px-4 py-3 text-right tnum text-negative">
+                      {s.netLossShare > 0 ? money(s.netLossShare) : "—"}
+                    </td>
+                  </tr>
+                  {s.partnerSplit.map((p, i) => (
+                    <tr key={i} className="bg-graphite-50/50 text-[12.5px]">
+                      <td className="py-2 pl-9 pr-5 text-graphite-500" colSpan={5}>
+                        ↳ {p.name}
+                        {p.role ? ` · ${p.role}` : ""}{" "}
+                        <span className="text-graphite-400">{p.percentage}%</span>
+                      </td>
+                      <td className={`px-4 py-2 text-right tnum ${p.share < 0 ? "text-negative" : "text-graphite-700"}`}>
+                        {money(p.share)}
+                      </td>
+                      <td className="px-4 py-2" />
+                    </tr>
+                  ))}
+                </Fragment>
               ))}
               {data.investorSplit.length === 0 && (
                 <tr>

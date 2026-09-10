@@ -131,6 +131,28 @@ export default function PortalDashboard() {
         </dl>
       </Card>
 
+      {/* How the net share is divided between profit partners */}
+      {o.partnerSplit && o.partnerSplit.length > 0 && (
+        <Card title="How your share is divided" className="mt-6">
+          <dl className="divide-y divide-ink-700 text-sm">
+            {o.partnerSplit.map((p, i) => (
+              <div key={i} className="flex items-center justify-between px-5 py-3">
+                <span className="text-graphite-700">
+                  {p.name}
+                  {p.role ? ` · ${p.role}` : ""}{" "}
+                  <span className="text-graphite-400">{p.percentage}%</span>
+                </span>
+                <span
+                  className={`tnum font-medium ${p.share < 0 ? "text-negative" : "text-accent-text"}`}
+                >
+                  {money(p.share)}
+                </span>
+              </div>
+            ))}
+          </dl>
+        </Card>
+      )}
+
       {/* Whole-book context — one compact strip (all losses are visible to every investor) */}
       <Card title="Whole book" className="mt-6">
         <dl className="grid grid-cols-2 gap-x-4 gap-y-4 p-4 sm:grid-cols-3 sm:gap-x-6 sm:p-5 lg:grid-cols-6">
