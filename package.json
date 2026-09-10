@@ -11,6 +11,7 @@
     "dev:server": "npm --prefix server run dev",
     "dev:client": "npm --prefix client run dev",
     "build": "npm --prefix client run build",
+    "test": "npm --prefix server test",
     "start": "npm --prefix server run start",
     "vercel-build": "npm --prefix server run generate && npm --prefix client run build",
     "db:deploy": "npm --prefix server run deploy",
