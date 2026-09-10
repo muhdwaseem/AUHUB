@@ -16,6 +16,9 @@ import { filesRouter } from "./routes/files.js";
 
 const app = express();
 
+// Don't advertise the framework.
+app.disable("x-powered-by");
+
 // Vercel runs the function behind its edge proxy; trust one hop so rate-limiting
 // and req.ip see the real client address, not the proxy's.
 app.set("trust proxy", 1);

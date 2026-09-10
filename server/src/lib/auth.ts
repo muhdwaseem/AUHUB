@@ -3,6 +3,11 @@ import type { NextFunction, Request, Response } from "express";
 import jwt from "jsonwebtoken";
 import { prisma } from "./prisma.js";
 
+// In production a missing JWT_SECRET must be fatal — falling back to a known
+// string would let anyone forge an admin token. Only dev gets the placeholder.
+if (process.env.NODE_ENV === "production" && !process.env.JWT_SECRET) {
+  throw new Error("JWT_SECRET is not set — refusing to start with a known signing key");
+}
 const JWT_SECRET = process.env.JWT_SECRET || "insecure-dev-secret";
 
 // A working-day session. Shorter than before (was 12h); a stale token is also
@@ -34,7 +39,7 @@ export function pwdStamp(passwordHash: string): string {
 }
 
 export function signToken(payload: TokenPayload): string {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: SESSION_TTL });
+  return jwt.sign(payload, JWT_SECRET, { expiresIn: SESSION_TTL, algorithm: "HS256" });
 }
 
 export async function authRequired(req: Request, res: Response, next: NextFunction) {
@@ -44,7 +49,7 @@ export async function authRequired(req: Request, res: Response, next: NextFuncti
 
   let payload: TokenPayload;
   try {
-    payload = jwt.verify(token, JWT_SECRET) as TokenPayload;
+    payload = jwt.verify(token, JWT_SECRET, { algorithms: ["HS256"] }) as TokenPayload;
   } catch {
     return res.status(401).json({ error: "Session expired, please log in again" });
   }

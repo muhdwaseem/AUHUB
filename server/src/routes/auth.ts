@@ -42,12 +42,14 @@ authRouter.post("/login", loginLimiter, async (req, res) => {
     where: { username: username.trim() },
     include: { investor: true },
   });
-  if (!user) return res.status(401).json({ error: "Invalid username or password" });
+
+  // Always run one bcrypt comparison so the response time doesn't reveal whether
+  // the username exists. This hash is of a throwaway string — it never matches.
+  const DUMMY_HASH = "$2a$10$86wpfh49joFotwhjI3x28.kJfMSf156JjV4MepEccNxs.VaV0FGiO";
+  const ok = await bcrypt.compare(password, user?.password ?? DUMMY_HASH);
+  if (!user || !ok) return res.status(401).json({ error: "Invalid username or password" });
   if (user.status === "INVALID")
     return res.status(403).json({ error: "This account has been disabled by the administrator" });
-
-  const ok = await bcrypt.compare(password, user.password);
-  if (!ok) return res.status(401).json({ error: "Invalid username or password" });
 
   const token = signToken({
     userId: user.id,
