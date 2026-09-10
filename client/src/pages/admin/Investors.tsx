@@ -528,51 +528,52 @@ export default function Investors() {
             </p>
 
             {form.partners.map((p, i) => (
-              <div key={i} className="mt-2 flex items-start gap-2">
+              <div key={i} className="mt-2 rounded-lg border border-graphite-100 p-2">
                 <Input
-                  placeholder="Name"
+                  placeholder="Partner name"
                   value={p.name}
                   onChange={(e) => {
                     const next = [...form.partners];
                     next[i] = { ...p, name: e.target.value };
                     setForm({ ...form, partners: next });
                   }}
-                  className="flex-1"
                 />
-                <Input
-                  placeholder="Role"
-                  value={p.role}
-                  onChange={(e) => {
-                    const next = [...form.partners];
-                    next[i] = { ...p, role: e.target.value };
-                    setForm({ ...form, partners: next });
-                  }}
-                  className="w-24"
-                />
-                <Input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  max="100"
-                  placeholder="%"
-                  value={p.percentage}
-                  onChange={(e) => {
-                    const next = [...form.partners];
-                    next[i] = { ...p, percentage: e.target.value };
-                    setForm({ ...form, partners: next });
-                  }}
-                  className="w-16"
-                />
-                <button
-                  type="button"
-                  onClick={() =>
-                    setForm({ ...form, partners: form.partners.filter((_, j) => j !== i) })
-                  }
-                  aria-label="Remove partner"
-                  className="mt-1 flex h-9 w-9 flex-none items-center justify-center rounded-md text-graphite-400 hover:bg-red-500/10 hover:text-negative"
-                >
-                  <Trash2 size={14} />
-                </button>
+                <div className="mt-2 flex items-center gap-2">
+                  <Input
+                    placeholder="Role (optional)"
+                    value={p.role}
+                    onChange={(e) => {
+                      const next = [...form.partners];
+                      next[i] = { ...p, role: e.target.value };
+                      setForm({ ...form, partners: next });
+                    }}
+                    className="flex-1"
+                  />
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    max="100"
+                    placeholder="%"
+                    value={p.percentage}
+                    onChange={(e) => {
+                      const next = [...form.partners];
+                      next[i] = { ...p, percentage: e.target.value };
+                      setForm({ ...form, partners: next });
+                    }}
+                    className="w-20 text-right"
+                  />
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setForm({ ...form, partners: form.partners.filter((_, j) => j !== i) })
+                    }
+                    aria-label="Remove partner"
+                    className="flex h-9 w-9 flex-none items-center justify-center rounded-md text-graphite-400 hover:bg-red-500/10 hover:text-negative"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
               </div>
             ))}
 
