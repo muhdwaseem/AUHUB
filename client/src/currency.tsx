@@ -14,7 +14,10 @@ const FALLBACK_BASE: Currency = {
   createdAt: "",
 };
 
-/** Describe where a date-resolved rate came from, for a form's fx-rate hint. */
+/** Describe where a date-resolved rate came from, for a form's fx-rate hint.
+ *  Only an exact match is ever put into the field itself — anything else is
+ *  reference text only, so a rate never gets silently carried from another
+ *  day into a record priced on a day it was never actually set for. */
 export function rateHint(
   info: CurrencyRateOn | null | undefined,
   date: string,
@@ -23,8 +26,8 @@ export function rateHint(
   if (!info) return "";
   if (info.exact) return `Rate for ${date}: ${info.rate} ${baseCode}`;
   if (info.resolvedDate)
-    return `No rate saved for ${date} — showing ${info.resolvedDate}'s rate: ${info.rate} ${baseCode}`;
-  return `No rate ever saved for this currency — using the default: ${info.rate} ${baseCode}`;
+    return `No rate saved for ${date} — enter it below (for reference, ${info.resolvedDate}'s rate was ${info.rate} ${baseCode})`;
+  return `No rate ever saved for this currency yet — enter it below.`;
 }
 
 /** "3h ago" / "yesterday" / "2 days ago" / "just now" — coarse, for the rate age. */

@@ -38,7 +38,9 @@ export default function Currencies() {
       const vals: Record<string, string> = {};
       for (const r of rows) {
         info[r.code] = r;
-        vals[r.code] = String(r.rate);
+        // Only pre-fill when a rate was actually saved for THIS date — never
+        // silently carry an older day's rate into the input as if it were set.
+        vals[r.code] = r.exact ? String(r.rate) : "";
       }
       setResolvedInfo(info);
       setRates(vals);
@@ -107,7 +109,14 @@ export default function Currencies() {
   async function saveRates(e: FormEvent) {
     e.preventDefault();
     setRateErr("");
-    const rows = others.map((c) => ({ code: c.code, rate: Number(rates[c.code]) }));
+    // Only the currencies you actually typed a value for — a blank field
+    // means "not set for this date yet", not "leave it as whatever it was".
+    const filled = others.filter((c) => (rates[c.code] ?? "").trim() !== "");
+    if (filled.length === 0) {
+      setRateErr("Enter at least one rate to save.");
+      return;
+    }
+    const rows = filled.map((c) => ({ code: c.code, rate: Number(rates[c.code]) }));
     const bad = rows.find((r) => !(r.rate > 0));
     if (bad) {
       setRateErr(`Enter a rate greater than 0 for ${bad.code}.`);
@@ -209,10 +218,11 @@ export default function Currencies() {
                         </span>
                       ) : info?.resolvedDate ? (
                         <span className="text-warning">
-                          no rate saved for {rateDate} — showing {info.resolvedDate}'s rate
+                          not set for {rateDate} yet — enter it below (for reference, {info.resolvedDate}
+                          's rate was {info.rate})
                         </span>
                       ) : (
-                        <span className="text-warning">never set — showing the default</span>
+                        <span className="text-warning">never set — enter a rate below</span>
                       )}
                     </p>
                   </div>

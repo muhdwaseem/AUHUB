@@ -17,7 +17,7 @@ import {
   Textarea,
 } from "../../components/ui";
 import { grams, shortDate, dateInput } from "../../format";
-import { useCurrency, relTime, rateHint } from "../../currency";
+import { useCurrency, rateHint } from "../../currency";
 import type { CurrencyRateOn } from "../../types";
 import { useTeam } from "../../team";
 import { ConversionHops, type HopRow } from "../../components/ConversionHops";
@@ -40,7 +40,7 @@ const blank = {
 };
 
 export default function Gold() {
-  const { currencies, base, byCode, fmt, rateOn } = useCurrency();
+  const { currencies, base, fmt, rateOn } = useCurrency();
   const { activeTeamId, activeTeam } = useTeam();
   const [typeFilter, setTypeFilter] = useState("");
   const { data, loading, error, reload } = useFetch<ListResp>(
@@ -68,8 +68,13 @@ export default function Gold() {
     const rows = await rateOn(date);
     const info = rows.find((r) => r.code === code) ?? null;
     setDateRateInfo(info);
-    if (autofill && info) {
-      setForm((f) => (f.date === date && f.currencyCode === code ? { ...f, fxRate: String(info.rate) } : f));
+    if (autofill) {
+      // Only an exact rate for THIS date ever lands in the field — a
+      // fallback from another day is shown as reference text, never
+      // silently filled in as if it were the real rate for this one.
+      setForm((f) =>
+        f.date === date && f.currencyCode === code ? { ...f, fxRate: info?.exact ? String(info.rate) : "" } : f
+      );
     }
   }
 
@@ -393,8 +398,9 @@ export default function Gold() {
                   setForm({
                     ...form,
                     currencyCode: code,
-                    // optimistic default while the date-resolved rate loads
-                    fxRate: code === base.code ? "1" : String(byCode(code).rate),
+                    // Blank until we know there's an exact rate for this date —
+                    // never guess from the currency's last-known rate.
+                    fxRate: code === base.code ? "1" : "",
                   });
                   refreshRateInfo(form.date, code, true);
                 }}
@@ -411,12 +417,8 @@ export default function Gold() {
                 label={`1 ${form.currencyCode} = ? ${base.code}`}
                 required
                 hint={`${
-                  dateRateInfo
-                    ? rateHint(dateRateInfo, form.date, base.code)
-                    : `Today's saved rate: ${byCode(form.currencyCode).rate} ${base.code} · updated ${relTime(
-                        byCode(form.currencyCode).rateUpdatedAt
-                      )}`
-                }. Override here if this trade used a different rate.`}
+                  dateRateInfo ? rateHint(dateRateInfo, form.date, base.code) : "Checking the rate for this date…"
+                } Enter the rate this trade actually used.`}
               >
                 <Input
                   type="number"
