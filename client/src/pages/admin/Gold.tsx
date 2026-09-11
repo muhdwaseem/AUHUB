@@ -273,10 +273,10 @@ export default function Gold() {
                   </span>
                 </div>
               </div>
-              {(t.counterparty || t.hops.length > 0) && (
+              {(t.counterparty || (t.hops ?? []).length > 0) && (
                 <div className="mt-1.5 flex items-center gap-1.5 truncate text-[11.5px] text-graphite-400">
                   {t.counterparty && <span className="truncate">{t.counterparty}</span>}
-                  {t.hops.length > 0 && (
+                  {(t.hops ?? []).length > 0 && (
                     <span className="flex-none rounded-full bg-graphite-100 px-1.5 py-0.5 text-[10px] font-medium text-graphite-500">
                       {t.hops.length}-step conversion
                     </span>
@@ -325,7 +325,7 @@ export default function Gold() {
                   </td>
                   <td className="px-5 py-3 text-xs text-graphite-500">
                     {t.counterparty || "—"}
-                    {t.hops.length > 0 && (
+                    {(t.hops ?? []).length > 0 && (
                       <span className="ml-1.5 rounded-full bg-graphite-100 px-1.5 py-0.5 text-[10px] font-medium text-graphite-500">
                         {t.hops.length}-step
                       </span>

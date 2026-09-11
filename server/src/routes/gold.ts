@@ -58,6 +58,13 @@ const hopData = (hops: z.infer<typeof hopSchema>[] | undefined) =>
 
 const withHops = { conversionHops: { orderBy: { order: "asc" as const } } };
 
+/** Prisma's relation is named `conversionHops` — the client expects `hops`.
+ *  Never send the raw record; every response goes through this. */
+function serialize(t: any) {
+  const { conversionHops, ...rest } = t;
+  return { ...rest, hops: conversionHops ?? [] };
+}
+
 goldRouter.get("/", async (req, res) => {
   const { from, to, type, teamId } = req.query as Record<string, string>;
   const where: any = {};
@@ -71,7 +78,7 @@ goldRouter.get("/", async (req, res) => {
     orderBy: { date: "desc" },
     include: withHops,
   });
-  res.json({ transactions: txns });
+  res.json({ transactions: txns.map(serialize) });
 });
 
 goldRouter.post("/", async (req, res) => {
@@ -101,7 +108,7 @@ goldRouter.post("/", async (req, res) => {
     },
     include: withHops,
   });
-  res.status(201).json(txn);
+  res.status(201).json(serialize(txn));
 });
 
 goldRouter.put("/:id", async (req, res) => {
@@ -144,7 +151,7 @@ goldRouter.put("/:id", async (req, res) => {
     },
     include: withHops,
   });
-  res.json(txn);
+  res.json(serialize(txn));
 });
 
 goldRouter.delete("/:id", async (req, res) => {

@@ -285,7 +285,7 @@ export default function Expenses() {
                         {e.chargedToInvestor ? " · charged" : " · tagged"}
                       </Badge>
                     )}
-                    {e.hops.length > 0 && (
+                    {(e.hops ?? []).length > 0 && (
                       <span className="rounded-full bg-graphite-100 px-1.5 py-0.5 text-[10px] font-medium text-graphite-500">
                         {e.hops.length}-step conversion
                       </span>
