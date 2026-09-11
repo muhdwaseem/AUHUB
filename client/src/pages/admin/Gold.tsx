@@ -306,16 +306,16 @@ export default function Gold() {
             <tbody className="divide-y divide-graphite-50">
               {data?.transactions.map((t) => (
                 <tr key={t.id} className="hover:bg-graphite-50/60">
-                  <td className="px-5 py-3 text-graphite-600">{shortDate(t.date)}</td>
-                  <td className="px-5 py-3">
+                  <td className="px-5 py-3 align-top text-graphite-600">{shortDate(t.date)}</td>
+                  <td className="px-5 py-3 align-top">
                     <Badge tone={t.type === "BUY" ? "amber" : "green"}>
                       {t.type === "BUY" ? "Purchase" : "Sale"}
                     </Badge>
                   </td>
-                  <td className="px-5 py-3 font-medium text-graphite-700">{t.quality}</td>
-                  <td className="px-5 py-3 text-right tnum">{grams(t.quantityGrams)}</td>
-                  <td className="px-5 py-3 text-right tnum">{fmt(t.ratePerGram, t.currencyCode)}</td>
-                  <td className="px-5 py-3 text-right">
+                  <td className="px-5 py-3 align-top font-medium text-graphite-700">{t.quality}</td>
+                  <td className="px-5 py-3 align-top text-right tnum">{grams(t.quantityGrams)}</td>
+                  <td className="px-5 py-3 align-top text-right tnum">{fmt(t.ratePerGram, t.currencyCode)}</td>
+                  <td className="px-5 py-3 align-top text-right">
                     <div className="tnum font-medium">{fmt(t.totalAmount, t.currencyCode)}</div>
                     {t.currencyCode !== base.code && (
                       <div className="text-[11px] tnum text-graphite-400">
@@ -323,7 +323,7 @@ export default function Gold() {
                       </div>
                     )}
                   </td>
-                  <td className="px-5 py-3 text-xs text-graphite-500">
+                  <td className="px-5 py-3 align-top text-xs text-graphite-500">
                     {t.counterparty || "—"}
                     {(t.hops ?? []).length > 0 && (
                       <span className="ml-1.5 rounded-full bg-graphite-100 px-1.5 py-0.5 text-[10px] font-medium text-graphite-500">
@@ -331,7 +331,7 @@ export default function Gold() {
                       </span>
                     )}
                   </td>
-                  <td className="px-5 py-3">{rowActions(t)}</td>
+                  <td className="px-5 py-3 align-top">{rowActions(t)}</td>
                 </tr>
               ))}
             </tbody>
