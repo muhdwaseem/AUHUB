@@ -17,6 +17,10 @@ const CURRENCIES = [
   { code: "USD", symbol: "$", decimals: 2, isBase: false, rate: 3.6725 },
   { code: "THB", symbol: "฿", decimals: 2, isBase: false, rate: 0.105 },
   { code: "IDR", symbol: "Rp", decimals: 0, isBase: false, rate: 0.00024 },
+  // A conversion-hop target for gold paid via a stablecoin (e.g. THB -> USDT
+  // -> AED) — tracks its own daily rate like any other currency, starting
+  // near its real-world USD peg.
+  { code: "USDT", symbol: "USDT", decimals: 2, isBase: false, rate: 3.6725 },
 ];
 
 async function main() {

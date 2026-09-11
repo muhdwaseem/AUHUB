@@ -20,6 +20,7 @@ import { grams, shortDate, dateInput } from "../../format";
 import { useCurrency, relTime, rateHint } from "../../currency";
 import type { CurrencyRateOn } from "../../types";
 import { useTeam } from "../../team";
+import { ConversionHops, type HopRow } from "../../components/ConversionHops";
 
 interface ListResp {
   transactions: GoldTxn[];
@@ -35,6 +36,7 @@ const blank = {
   fxRate: "1",
   counterparty: "",
   notes: "",
+  hops: [] as HopRow[],
 };
 
 export default function Gold() {
@@ -91,6 +93,14 @@ export default function Gold() {
       fxRate: String(t.fxRate ?? 1),
       counterparty: t.counterparty ?? "",
       notes: t.notes ?? "",
+      hops: (t.hops ?? []).map((h) => ({
+        fromCurrency: h.fromCurrency,
+        fromAmount: String(h.fromAmount),
+        toCurrency: h.toCurrency,
+        toAmount: String(h.toAmount),
+        date: h.date.slice(0, 10),
+        notes: h.notes ?? "",
+      })),
     });
     setFormErr("");
     refreshRateInfo(date, t.currencyCode ?? "AED", false);
@@ -116,6 +126,15 @@ export default function Gold() {
         fxRate: form.currencyCode === base.code ? 1 : Number(form.fxRate || 1),
         counterparty: form.counterparty,
         notes: form.notes,
+        hops: form.hops.map((h, i) => ({
+          order: i + 1,
+          fromCurrency: h.fromCurrency,
+          fromAmount: Number(h.fromAmount),
+          toCurrency: h.toCurrency,
+          toAmount: Number(h.toAmount),
+          date: h.date,
+          notes: h.notes,
+        })),
       };
       if (editing) await api.put(`/gold/${editing.id}`, payload);
       else await api.post("/gold", payload);
@@ -242,8 +261,15 @@ export default function Gold() {
                   </span>
                 </div>
               </div>
-              {t.counterparty && (
-                <div className="mt-1.5 truncate text-[11.5px] text-graphite-400">{t.counterparty}</div>
+              {(t.counterparty || t.hops.length > 0) && (
+                <div className="mt-1.5 flex items-center gap-1.5 truncate text-[11.5px] text-graphite-400">
+                  {t.counterparty && <span className="truncate">{t.counterparty}</span>}
+                  {t.hops.length > 0 && (
+                    <span className="flex-none rounded-full bg-graphite-100 px-1.5 py-0.5 text-[10px] font-medium text-graphite-500">
+                      {t.hops.length}-step conversion
+                    </span>
+                  )}
+                </div>
               )}
               <div className="mt-1.5 border-t border-graphite-100 pt-1.5">{rowActions(t)}</div>
             </div>
@@ -285,7 +311,14 @@ export default function Gold() {
                       </div>
                     )}
                   </td>
-                  <td className="px-5 py-3 text-xs text-graphite-500">{t.counterparty || "—"}</td>
+                  <td className="px-5 py-3 text-xs text-graphite-500">
+                    {t.counterparty || "—"}
+                    {t.hops.length > 0 && (
+                      <span className="ml-1.5 rounded-full bg-graphite-100 px-1.5 py-0.5 text-[10px] font-medium text-graphite-500">
+                        {t.hops.length}-step
+                      </span>
+                    )}
+                  </td>
                   <td className="px-5 py-3">{rowActions(t)}</td>
                 </tr>
               ))}
@@ -395,6 +428,15 @@ export default function Gold() {
               </Field>
             )}
           </div>
+          <ConversionHops
+            hops={form.hops}
+            onChange={(hops) => setForm({ ...form, hops })}
+            currencies={currencies}
+            baseCode={base.code}
+            onApplyRate={(fromCurrency, rate) =>
+              setForm((f) => ({ ...f, currencyCode: fromCurrency, fxRate: String(rate) }))
+            }
+          />
           <div className="rounded-lg bg-gold-500/10 px-3 py-2 text-sm text-accent-text">
             Transaction total: <strong className="tnum">{fmt(preview, form.currencyCode)}</strong>
             {form.currencyCode !== base.code && Number(form.fxRate) > 0 && (

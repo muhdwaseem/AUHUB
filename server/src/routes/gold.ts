@@ -6,6 +6,18 @@ import { authRequired, adminRequired } from "../lib/auth.js";
 export const goldRouter = Router();
 goldRouter.use(authRequired, adminRequired);
 
+/** One leg of a multi-step conversion (e.g. THB -> USDT -> AED). `rate` is
+ *  always derived server-side from the two amounts, never trusted from the client. */
+const hopSchema = z.object({
+  order: z.coerce.number().int().min(1),
+  fromCurrency: z.string().trim().toUpperCase().min(1).max(10),
+  fromAmount: z.coerce.number().positive(),
+  toCurrency: z.string().trim().toUpperCase().min(1).max(10),
+  toAmount: z.coerce.number().positive(),
+  date: z.coerce.date(),
+  notes: z.string().optional().or(z.literal("")),
+});
+
 const txnSchema = z.object({
   type: z.enum(["BUY", "SELL"]),
   teamId: z.string().trim().min(1).optional(),
@@ -17,6 +29,9 @@ const txnSchema = z.object({
   fxRate: z.coerce.number().positive("FX rate must be greater than 0").optional(),
   counterparty: z.string().optional().or(z.literal("")),
   notes: z.string().optional().or(z.literal("")),
+  /** Optional conversion trail — purely a paper trail, doesn't change the
+   *  accounting; replace-all on save, same as an investor's profit partners. */
+  hops: z.array(hopSchema).optional(),
 });
 
 /** Resolve a currency code to its stored row + a sane fxRate (base is always 1). */
@@ -26,6 +41,23 @@ async function resolveCurrency(code: string, fxRate?: number) {
   return { code: cur.code, fxRate: cur.isBase ? 1 : (fxRate ?? cur.rate) };
 }
 
+const hopData = (hops: z.infer<typeof hopSchema>[] | undefined) =>
+  (hops ?? [])
+    .slice()
+    .sort((a, b) => a.order - b.order)
+    .map((h, idx) => ({
+      order: idx + 1,
+      fromCurrency: h.fromCurrency,
+      fromAmount: h.fromAmount,
+      toCurrency: h.toCurrency,
+      toAmount: h.toAmount,
+      rate: Math.round((h.toAmount / h.fromAmount) * 1e6) / 1e6,
+      date: h.date,
+      notes: h.notes || null,
+    }));
+
+const withHops = { conversionHops: { orderBy: { order: "asc" as const } } };
+
 goldRouter.get("/", async (req, res) => {
   const { from, to, type, teamId } = req.query as Record<string, string>;
   const where: any = {};
@@ -34,7 +66,11 @@ goldRouter.get("/", async (req, res) => {
   if (from) where.date.gte = new Date(from);
   if (to) where.date.lte = new Date(to);
   if (type) where.type = type;
-  const txns = await prisma.goldTransaction.findMany({ where, orderBy: { date: "desc" } });
+  const txns = await prisma.goldTransaction.findMany({
+    where,
+    orderBy: { date: "desc" },
+    include: withHops,
+  });
   res.json({ transactions: txns });
 });
 
@@ -61,7 +97,9 @@ goldRouter.post("/", async (req, res) => {
       fxRate: cur.fxRate,
       counterparty: d.counterparty || null,
       notes: d.notes || null,
+      conversionHops: { create: hopData(d.hops) },
     },
+    include: withHops,
   });
   res.status(201).json(txn);
 });
@@ -99,7 +137,12 @@ goldRouter.put("/:id", async (req, res) => {
       fxRate,
       counterparty: d.counterparty === undefined ? undefined : d.counterparty || null,
       notes: d.notes === undefined ? undefined : d.notes || null,
+      // Replace-all: only touch hops when the client sends the array.
+      ...(d.hops !== undefined
+        ? { conversionHops: { deleteMany: {}, create: hopData(d.hops) } }
+        : {}),
     },
+    include: withHops,
   });
   res.json(txn);
 });

@@ -120,6 +120,21 @@ export interface Investor {
   generatedPassword: string | null;
 }
 
+/** One leg of a multi-step currency conversion (e.g. THB -> USDT -> AED) —
+ *  a paper trail attached to a trade or expense, purely for reference. */
+export interface ConversionHop {
+  id: string;
+  order: number;
+  fromCurrency: string;
+  fromAmount: number;
+  toCurrency: string;
+  toAmount: number;
+  /** toAmount / fromAmount, server-derived. */
+  rate: number;
+  date: string;
+  notes: string | null;
+}
+
 export interface GoldTxn {
   id: string;
   type: "BUY" | "SELL";
@@ -133,6 +148,7 @@ export interface GoldTxn {
   fxRate: number;
   counterparty: string | null;
   notes: string | null;
+  hops: ConversionHop[];
 }
 
 export interface Attachment {
@@ -157,6 +173,7 @@ export interface Expense {
   investorId: string | null;
   investorName: string | null;
   chargedToInvestor: boolean;
+  hops: ConversionHop[];
   attachments: Attachment[];
 }
 

@@ -17,6 +17,33 @@ const optionalId = z.preprocess(
   z.string().nullable()
 );
 
+/** One leg of a multi-step conversion (e.g. THB -> USDT -> AED). `rate` is
+ *  always derived server-side from the two amounts, never trusted from the client. */
+const hopSchema = z.object({
+  order: z.coerce.number().int().min(1),
+  fromCurrency: z.string().trim().toUpperCase().min(1).max(10),
+  fromAmount: z.coerce.number().positive(),
+  toCurrency: z.string().trim().toUpperCase().min(1).max(10),
+  toAmount: z.coerce.number().positive(),
+  date: z.coerce.date(),
+  notes: z.string().optional().or(z.literal("")),
+});
+// Create (multipart) can't nest arrays, so the client JSON.stringifies the hop
+// list into one form field there; update (plain JSON body) sends a real array
+// directly. Accept either shape (missing/blank/invalid -> undefined, i.e.
+// "don't touch the hops").
+const hopsField = z.preprocess((v) => {
+  if (Array.isArray(v)) return v;
+  if (typeof v === "string" && v !== "") {
+    try {
+      return JSON.parse(v);
+    } catch {
+      return undefined;
+    }
+  }
+  return undefined;
+}, z.array(hopSchema).optional());
+
 const expenseSchema = z.object({
   categoryId: z.string().min(1, "Choose an expense header"),
   teamId: z.string().trim().min(1).optional(),
@@ -27,7 +54,23 @@ const expenseSchema = z.object({
   description: z.string().optional().or(z.literal("")),
   investorId: optionalId.optional(),
   chargedToInvestor: boolish.optional(),
+  hops: hopsField,
 });
+
+const hopData = (hops: z.infer<typeof hopSchema>[] | undefined) =>
+  (hops ?? [])
+    .slice()
+    .sort((a, b) => a.order - b.order)
+    .map((h, idx) => ({
+      order: idx + 1,
+      fromCurrency: h.fromCurrency,
+      fromAmount: h.fromAmount,
+      toCurrency: h.toCurrency,
+      toAmount: h.toAmount,
+      rate: Math.round((h.toAmount / h.fromAmount) * 1e6) / 1e6,
+      date: h.date,
+      notes: h.notes || null,
+    }));
 
 /** base = amount * fxRate; the base currency is always fxRate 1. */
 async function resolveCurrency(code: string, fxRate?: number) {
@@ -51,6 +94,17 @@ function serialize(e: any) {
     investorId: e.investorId ?? null,
     investorName: e.investor?.name ?? null,
     chargedToInvestor: !!e.chargedToInvestor,
+    hops: (e.conversionHops ?? []).map((h: any) => ({
+      id: h.id,
+      order: h.order,
+      fromCurrency: h.fromCurrency,
+      fromAmount: h.fromAmount,
+      toCurrency: h.toCurrency,
+      toAmount: h.toAmount,
+      rate: h.rate,
+      date: h.date,
+      notes: h.notes,
+    })),
     attachments: (e.attachments ?? []).map((a: any) => ({
       id: a.id,
       originalName: a.originalName,
@@ -88,7 +142,12 @@ expensesRouter.get("/", async (req, res) => {
 
   const expenses = await prisma.expense.findMany({
     where,
-    include: { category: true, attachments: true, investor: true },
+    include: {
+      category: true,
+      attachments: true,
+      investor: true,
+      conversionHops: { orderBy: { order: "asc" } },
+    },
     orderBy: { date: "desc" },
   });
   // Total is in the base currency — convert each row by its fxRate first.
@@ -130,6 +189,7 @@ expensesRouter.post("/", upload.array("files", 10), async (req, res) => {
       description: parsed.data.description || null,
       investorId: parsed.data.investorId ?? null,
       chargedToInvestor: !!parsed.data.chargedToInvestor && !!parsed.data.investorId,
+      conversionHops: { create: hopData(parsed.data.hops) },
       attachments: {
         create: stored.map((s) => ({
           blobUrl: s.blobUrl,
@@ -139,7 +199,12 @@ expensesRouter.post("/", upload.array("files", 10), async (req, res) => {
         })),
       },
     },
-    include: { category: true, attachments: true, investor: true },
+    include: {
+      category: true,
+      attachments: true,
+      investor: true,
+      conversionHops: { orderBy: { order: "asc" } },
+    },
   });
   res.status(201).json(serialize(expense));
 });
@@ -188,8 +253,15 @@ expensesRouter.put("/:id", async (req, res) => {
         d.chargedToInvestor === undefined
           ? undefined
           : !!d.chargedToInvestor && !!nextInvestorId,
+      // Replace-all: only touch hops when the client sends the array.
+      ...(d.hops !== undefined ? { conversionHops: { deleteMany: {}, create: hopData(d.hops) } } : {}),
     },
-    include: { category: true, attachments: true, investor: true },
+    include: {
+      category: true,
+      attachments: true,
+      investor: true,
+      conversionHops: { orderBy: { order: "asc" } },
+    },
   });
   res.json(serialize(expense));
 });
@@ -212,7 +284,12 @@ expensesRouter.post("/:id/attachments", upload.array("files", 10), async (req, r
   });
   const updated = await prisma.expense.findUnique({
     where: { id: expense.id },
-    include: { category: true, attachments: true, investor: true },
+    include: {
+      category: true,
+      attachments: true,
+      investor: true,
+      conversionHops: { orderBy: { order: "asc" } },
+    },
   });
   res.status(201).json(serialize(updated));
 });

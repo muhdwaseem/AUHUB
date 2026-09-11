@@ -21,6 +21,7 @@ import { shortDate, dateInput } from "../../format";
 import { useCurrency, relTime, rateHint } from "../../currency";
 import type { CurrencyRateOn } from "../../types";
 import { useTeam } from "../../team";
+import { ConversionHops, type HopRow } from "../../components/ConversionHops";
 
 interface ListResp {
   expenses: Expense[];
@@ -39,6 +40,7 @@ const blankForm = {
   description: "",
   investorId: "",
   chargedToInvestor: false,
+  hops: [] as HopRow[],
 };
 
 export default function Expenses() {
@@ -102,6 +104,14 @@ export default function Expenses() {
       description: e.description ?? "",
       investorId: e.investorId ?? "",
       chargedToInvestor: e.chargedToInvestor,
+      hops: (e.hops ?? []).map((h) => ({
+        fromCurrency: h.fromCurrency,
+        fromAmount: String(h.fromAmount),
+        toCurrency: h.toCurrency,
+        toAmount: String(h.toAmount),
+        date: h.date.slice(0, 10),
+        notes: h.notes ?? "",
+      })),
     });
     setFiles([]);
     setFormErr("");
@@ -115,6 +125,15 @@ export default function Expenses() {
     setFormErr("");
     const charged = !!form.investorId && form.chargedToInvestor;
     const fxRate = form.currencyCode === base.code ? 1 : Number(form.fxRate || 1);
+    const hops = form.hops.map((h, i) => ({
+      order: i + 1,
+      fromCurrency: h.fromCurrency,
+      fromAmount: Number(h.fromAmount),
+      toCurrency: h.toCurrency,
+      toAmount: Number(h.toAmount),
+      date: h.date,
+      notes: h.notes,
+    }));
     try {
       if (editing) {
         await api.put(`/expenses/${editing.id}`, {
@@ -126,6 +145,7 @@ export default function Expenses() {
           description: form.description,
           investorId: form.investorId || null,
           chargedToInvestor: charged,
+          hops,
         });
         if (files.length) {
           const fd = new FormData();
@@ -143,6 +163,7 @@ export default function Expenses() {
         fd.append("description", form.description);
         fd.append("investorId", form.investorId || "");
         fd.append("chargedToInvestor", charged ? "true" : "false");
+        fd.append("hops", JSON.stringify(hops));
         files.forEach((f) => fd.append("files", f));
         await api.post("/expenses", fd);
       }
@@ -251,6 +272,11 @@ export default function Expenses() {
                         {e.investorName}
                         {e.chargedToInvestor ? " · charged" : " · tagged"}
                       </Badge>
+                    )}
+                    {e.hops.length > 0 && (
+                      <span className="rounded-full bg-graphite-100 px-1.5 py-0.5 text-[10px] font-medium text-graphite-500">
+                        {e.hops.length}-step conversion
+                      </span>
                     )}
                   </div>
                   {e.description && (
@@ -400,6 +426,15 @@ export default function Expenses() {
               />
             </Field>
           )}
+          <ConversionHops
+            hops={form.hops}
+            onChange={(hops) => setForm({ ...form, hops })}
+            currencies={currencies}
+            baseCode={base.code}
+            onApplyRate={(fromCurrency, rate) =>
+              setForm((f) => ({ ...f, currencyCode: fromCurrency, fxRate: String(rate) }))
+            }
+          />
           <Field label="Description">
             <Textarea
               value={form.description}

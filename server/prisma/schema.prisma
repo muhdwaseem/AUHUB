@@ -177,6 +177,8 @@ model Expense {
   /// investor's profit share only, not from the shared pool.
   chargedToInvestor Boolean @default(false)
 
+  conversionHops ConversionHop[]
+
   @@index([teamId])
 }
 
@@ -214,5 +216,41 @@ model GoldTransaction {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
+  conversionHops ConversionHop[]
+
   @@index([teamId])
+}
+
+/// One leg of a multi-step currency conversion attached to a trade or expense
+/// — e.g. "10,000 THB -> 280 USDT" then "280 USDT -> 1,028 AED" for gold paid
+/// for in Thailand via a stablecoin before it lands here. Purely a paper
+/// trail: the parent record's own `fxRate` is what the accounting engine
+/// reads; these hops document how that rate was actually arrived at, and the
+/// client multiplies the chain to suggest the parent's effective fxRate.
+model ConversionHop {
+  id String @id @default(cuid())
+
+  /// Exactly one of these is set — a hop belongs to one trade or one expense.
+  transaction   GoldTransaction? @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  transactionId String?
+  expense       Expense?         @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+  expenseId     String?
+
+  /// 1-based position in the chain. The first hop's fromCurrency is what was
+  /// actually paid; the last hop's toCurrency should be the parent record's
+  /// own currencyCode.
+  order        Int
+  fromCurrency String
+  fromAmount   Float
+  toCurrency   String
+  toAmount     Float
+  /// toAmount / fromAmount, kept alongside the two amounts so a hand-typed
+  /// rate (rather than two amounts) still has one canonical value to chain.
+  rate      Float
+  date      DateTime
+  notes     String?
+  createdAt DateTime @default(now())
+
+  @@index([transactionId])
+  @@index([expenseId])
 }
