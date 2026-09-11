@@ -53,6 +53,22 @@ model Currency {
   createdAt     DateTime  @default(now())
 }
 
+/// One currency's rate as of one calendar day. History behind `Currency.rate`
+/// (which only ever holds the latest value) — lets a trade dated in the past
+/// pull the rate that was actually in effect that day instead of today's.
+model CurrencyRate {
+  id           String @id @default(cuid())
+  currencyCode String
+  /// ISO date (yyyy-mm-dd), one row per currency per day.
+  date         String
+  /// Base-currency units per 1 unit of this currency — same meaning as Currency.rate.
+  rate         Float
+  createdAt    DateTime @default(now())
+
+  @@unique([currencyCode, date])
+  @@index([currencyCode, date])
+}
+
 /// Login accounts. One ADMIN (seeded) plus one auto-created account per investor.
 model User {
   id         String    @id @default(cuid())

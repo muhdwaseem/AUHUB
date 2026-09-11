@@ -1,6 +1,7 @@
-import { createContext, useContext, type ReactNode } from "react";
+import { createContext, useContext, useRef, type ReactNode } from "react";
+import { api } from "./api";
 import { useFetch } from "./useApi";
-import type { Currency } from "./types";
+import type { Currency, CurrencyRateOn } from "./types";
 
 const FALLBACK_BASE: Currency = {
   id: "",
@@ -12,6 +13,19 @@ const FALLBACK_BASE: Currency = {
   rateUpdatedAt: null,
   createdAt: "",
 };
+
+/** Describe where a date-resolved rate came from, for a form's fx-rate hint. */
+export function rateHint(
+  info: CurrencyRateOn | null | undefined,
+  date: string,
+  baseCode: string
+): string {
+  if (!info) return "";
+  if (info.exact) return `Rate for ${date}: ${info.rate} ${baseCode}`;
+  if (info.resolvedDate)
+    return `No rate saved for ${date} — showing ${info.resolvedDate}'s rate: ${info.rate} ${baseCode}`;
+  return `No rate ever saved for this currency — using the default: ${info.rate} ${baseCode}`;
+}
 
 /** "3h ago" / "yesterday" / "2 days ago" / "just now" — coarse, for the rate age. */
 export function relTime(iso: string | null | undefined): string {
@@ -31,6 +45,9 @@ interface CurrencyCtx {
   byCode: (code: string | null | undefined) => Currency;
   /** Format an amount. `code` selects the currency; omit it to use the base. */
   fmt: (amount: number | null | undefined, code?: string | null) => string;
+  /** Every currency's rate as of `date` (yyyy-mm-dd), falling back to the
+   *  nearest earlier saved rate. Cached per date for the life of the page. */
+  rateOn: (date: string) => Promise<CurrencyRateOn[]>;
 }
 
 const Ctx = createContext<CurrencyCtx>(null as any);
@@ -40,6 +57,7 @@ export function CurrencyProvider({ children }: { children: ReactNode }) {
   const { data } = useFetch<Currency[]>("/currencies");
   const currencies = data && data.length > 0 ? data : [FALLBACK_BASE];
   const base = currencies.find((c) => c.isBase) ?? currencies[0];
+  const rateOnCache = useRef(new Map<string, Promise<CurrencyRateOn[]>>());
 
   const byCode = (code: string | null | undefined) =>
     currencies.find((c) => c.code === code) ?? base;
@@ -54,5 +72,20 @@ export function CurrencyProvider({ children }: { children: ReactNode }) {
     return `${cur.symbol} ${n}`;
   };
 
-  return <Ctx.Provider value={{ currencies, base, byCode, fmt }}>{children}</Ctx.Provider>;
+  const rateOn = (date: string) => {
+    if (!rateOnCache.current.has(date)) {
+      rateOnCache.current.set(
+        date,
+        api
+          .get<CurrencyRateOn[]>(`/currencies/rates-on?date=${date}`)
+          .then((r) => r.data)
+          .catch(() => [])
+      );
+    }
+    return rateOnCache.current.get(date)!;
+  };
+
+  return (
+    <Ctx.Provider value={{ currencies, base, byCode, fmt, rateOn }}>{children}</Ctx.Provider>
+  );
 }

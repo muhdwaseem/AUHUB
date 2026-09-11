@@ -219,3 +219,14 @@ export interface Currency {
   isBase: boolean;
   createdAt: string;
 }
+
+/** One currency's rate as resolved for a specific date (see GET /currencies/rates-on). */
+export interface CurrencyRateOn {
+  code: string;
+  rate: number;
+  /** The date this rate actually came from — earlier than the query date when
+   *  that exact day had no saved rate yet (nearest-earlier-date fallback). */
+  resolvedDate: string | null;
+  /** false when resolvedDate !== the requested date (a fallback, not an exact hit). */
+  exact: boolean;
+}

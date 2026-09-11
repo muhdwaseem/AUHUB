@@ -18,7 +18,8 @@ import {
 } from "../../components/ui";
 import { AttachmentLink } from "../../components/AttachmentLink";
 import { shortDate, dateInput } from "../../format";
-import { useCurrency, relTime } from "../../currency";
+import { useCurrency, relTime, rateHint } from "../../currency";
+import type { CurrencyRateOn } from "../../types";
 import { useTeam } from "../../team";
 
 interface ListResp {
@@ -41,7 +42,7 @@ const blankForm = {
 };
 
 export default function Expenses() {
-  const { currencies, base, byCode, fmt } = useCurrency();
+  const { currencies, base, byCode, fmt, rateOn } = useCurrency();
   const { activeTeamId, activeTeam } = useTeam();
   const [catFilter, setCatFilter] = useState("");
   const { data: cats } = useFetch<Category[]>("/expense-categories");
@@ -64,28 +65,47 @@ export default function Expenses() {
   const [formErr, setFormErr] = useState("");
   const [busy, setBusy] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  // See Gold.tsx for the same pattern: resolves the fx rate for the form's own
+  // date, only auto-fills fxRate on an explicit date/currency change.
+  const [dateRateInfo, setDateRateInfo] = useState<CurrencyRateOn | null>(null);
+
+  async function refreshRateInfo(date: string, code: string, autofill: boolean) {
+    if (code === base.code) {
+      setDateRateInfo(null);
+      return;
+    }
+    const rows = await rateOn(date);
+    const info = rows.find((r) => r.code === code) ?? null;
+    setDateRateInfo(info);
+    if (autofill && info) {
+      setForm((f) => (f.date === date && f.currencyCode === code ? { ...f, fxRate: String(info.rate) } : f));
+    }
+  }
 
   function openAdd() {
     setEditing(null);
     setForm({ ...blankForm, categoryId: cats?.[0]?.id ?? "" });
     setFiles([]);
     setFormErr("");
+    setDateRateInfo(null);
     setOpen(true);
   }
   function openEdit(e: Expense) {
     setEditing(e);
+    const date = e.date.slice(0, 10);
     setForm({
       categoryId: e.categoryId,
       amount: String(e.amount),
       currencyCode: e.currencyCode ?? "AED",
       fxRate: String(e.fxRate ?? 1),
-      date: e.date.slice(0, 10),
+      date,
       description: e.description ?? "",
       investorId: e.investorId ?? "",
       chargedToInvestor: e.chargedToInvestor,
     });
     setFiles([]);
     setFormErr("");
+    refreshRateInfo(date, e.currencyCode ?? "AED", false);
     setOpen(true);
   }
 
@@ -318,7 +338,11 @@ export default function Expenses() {
               <Input
                 type="date"
                 value={form.date}
-                onChange={(e) => setForm({ ...form, date: e.target.value })}
+                onChange={(e) => {
+                  const date = e.target.value;
+                  setForm({ ...form, date });
+                  refreshRateInfo(date, form.currencyCode, true);
+                }}
               />
             </Field>
           </div>
@@ -336,13 +360,15 @@ export default function Expenses() {
             <Field label="Currency" required>
               <Select
                 value={form.currencyCode}
-                onChange={(e) =>
+                onChange={(e) => {
+                  const code = e.target.value;
                   setForm({
                     ...form,
-                    currencyCode: e.target.value,
-                    fxRate: e.target.value === base.code ? "1" : String(byCode(e.target.value).rate),
-                  })
-                }
+                    currencyCode: code,
+                    fxRate: code === base.code ? "1" : String(byCode(code).rate),
+                  });
+                  refreshRateInfo(form.date, code, true);
+                }}
               >
                 {currencies.map((c) => (
                   <option key={c.code} value={c.code}>
@@ -357,9 +383,12 @@ export default function Expenses() {
               label={`1 ${form.currencyCode} = ? ${base.code}`}
               required
               hint={
-                Number(form.amount) > 0 && Number(form.fxRate) > 0
-                  ? `≈ ${fmt(Number(form.amount) * Number(form.fxRate))} in ${base.code} · today's saved rate ${byCode(form.currencyCode).rate}, updated ${relTime(byCode(form.currencyCode).rateUpdatedAt)}`
-                  : `Today's saved rate: ${byCode(form.currencyCode).rate} ${base.code} · updated ${relTime(byCode(form.currencyCode).rateUpdatedAt)}`
+                (dateRateInfo
+                  ? rateHint(dateRateInfo, form.date, base.code)
+                  : `Today's saved rate: ${byCode(form.currencyCode).rate} ${base.code} · updated ${relTime(byCode(form.currencyCode).rateUpdatedAt)}`) +
+                (Number(form.amount) > 0 && Number(form.fxRate) > 0
+                  ? ` · ≈ ${fmt(Number(form.amount) * Number(form.fxRate))} in ${base.code}`
+                  : "")
               }
             >
               <Input

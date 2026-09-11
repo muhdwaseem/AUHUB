@@ -2,31 +2,57 @@ import { FormEvent, useEffect, useState } from "react";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 import { api, apiError } from "../../api";
 import { useFetch } from "../../useApi";
-import type { Currency } from "../../types";
+import type { Currency, CurrencyRateOn } from "../../types";
 import { PageHeader } from "../../components/AppShell";
 import { Badge, Button, Card, ErrorNote, Field, Input, Modal, Spinner } from "../../components/ui";
-import { relTime } from "../../currency";
+import { relTime, useCurrency } from "../../currency";
+
+const todayStr = () => new Date().toISOString().slice(0, 10);
 
 export default function Currencies() {
   const { data, loading, error, reload } = useFetch<Currency[]>("/currencies");
+  const { rateOn } = useCurrency();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Currency | null>(null);
   const [form, setForm] = useState({ code: "", symbol: "", decimals: "2" });
   const [formErr, setFormErr] = useState("");
   const [busy, setBusy] = useState(false);
 
-  // "Today's rates" panel state: code -> rate string
+  // Rates panel: which date is being viewed/edited, its rates (code -> string),
+  // and where each one actually came from (exact hit for that date, or a
+  // fallback to the nearest earlier saved rate).
+  const [rateDate, setRateDate] = useState(todayStr());
   const [rates, setRates] = useState<Record<string, string>>({});
+  const [resolvedInfo, setResolvedInfo] = useState<Record<string, CurrencyRateOn>>({});
   const [rateErr, setRateErr] = useState("");
   const [rateBusy, setRateBusy] = useState(false);
+  const [rateLoading, setRateLoading] = useState(false);
+
   useEffect(() => {
-    if (data) {
-      setRates(Object.fromEntries(data.filter((c) => !c.isBase).map((c) => [c.code, String(c.rate)])));
-    }
-  }, [data]);
+    if (!data) return;
+    let cancelled = false;
+    setRateLoading(true);
+    rateOn(rateDate).then((rows) => {
+      if (cancelled) return;
+      const info: Record<string, CurrencyRateOn> = {};
+      const vals: Record<string, string> = {};
+      for (const r of rows) {
+        info[r.code] = r;
+        vals[r.code] = String(r.rate);
+      }
+      setResolvedInfo(info);
+      setRates(vals);
+      setRateLoading(false);
+    });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data, rateDate]);
 
   const base = data?.find((c) => c.isBase);
   const others = (data ?? []).filter((c) => !c.isBase);
+  const isToday = rateDate === todayStr();
 
   function openAdd() {
     setEditing(null);
@@ -89,8 +115,15 @@ export default function Currencies() {
     }
     setRateBusy(true);
     try {
-      await api.post("/currencies/rates", { rates: rows });
+      await api.post("/currencies/rates", { date: rateDate, rates: rows });
       reload();
+      // We know exactly what was just saved — update in place rather than
+      // re-fetching (the rateOn() cache would still hand back the stale value).
+      setResolvedInfo((prev) => {
+        const next = { ...prev };
+        for (const r of rows) next[r.code] = { code: r.code, rate: r.rate, resolvedDate: rateDate, exact: true };
+        return next;
+      });
     } catch (err) {
       setRateErr(apiError(err));
     } finally {
@@ -115,21 +148,31 @@ export default function Currencies() {
         }
       />
 
-      {/* Today's rates — the admin updates these daily */}
+      {/* Rates for a date — defaults to today, but any past day can be set or
+          corrected so a trade dated back then pulls the rate that actually
+          applied, not whatever the rate happens to be today. */}
       {others.length > 0 && (
-        <Card title="Today's rates" className="mb-6">
+        <Card title={isToday ? "Today's rates" : `Rates for ${rateDate}`} className="mb-6">
           <form onSubmit={saveRates} className="p-4">
             <p className="mb-3 text-[12px] text-graphite-400">
-              The rate a new trade or expense in that currency is priced at. Update it whenever
-              the market moves — the value you save here pre-fills the currency dropdown on every
-              form (still editable per record).
+              The rate a trade or expense dated on this day is priced at — every form pulls its
+              fx-rate from whatever's saved for its own date (still editable per record). Pick an
+              earlier date here to back-fill or correct a past day's rate.
             </p>
+            <div className="mb-3 max-w-[200px]">
+              <Field label="Date">
+                <Input
+                  type="date"
+                  max={todayStr()}
+                  value={rateDate}
+                  onChange={(e) => setRateDate(e.target.value)}
+                />
+              </Field>
+            </div>
             <div className="space-y-2.5">
               {others.map((c) => {
                 const r = Number(rates[c.code]);
-                const stale =
-                  !c.rateUpdatedAt ||
-                  Date.now() - new Date(c.rateUpdatedAt).getTime() > 24 * 3600 * 1000;
+                const info = resolvedInfo[c.code];
                 return (
                   <div
                     key={c.id}
@@ -149,6 +192,7 @@ export default function Currencies() {
                           step="0.0001"
                           min="0"
                           inputMode="decimal"
+                          disabled={rateLoading}
                           className="text-right"
                           value={rates[c.code] ?? ""}
                           onChange={(e) => setRates({ ...rates, [c.code]: e.target.value })}
@@ -157,9 +201,19 @@ export default function Currencies() {
                     </div>
                     <p className="mt-2 text-[11px] text-graphite-400">
                       {r > 0 && `≈ ${(1 / r).toLocaleString("en-US", { maximumFractionDigits: 4 })} ${c.code} per ${baseCode} · `}
-                      <span className={stale ? "text-warning" : ""}>
-                        updated {relTime(c.rateUpdatedAt)}
-                      </span>
+                      {rateLoading ? (
+                        "loading…"
+                      ) : info?.exact ? (
+                        <span className={isToday ? "" : "text-positive"}>
+                          set for {rateDate}
+                        </span>
+                      ) : info?.resolvedDate ? (
+                        <span className="text-warning">
+                          no rate saved for {rateDate} — showing {info.resolvedDate}'s rate
+                        </span>
+                      ) : (
+                        <span className="text-warning">never set — showing the default</span>
+                      )}
                     </p>
                   </div>
                 );
@@ -169,10 +223,10 @@ export default function Currencies() {
             <div className="mt-4 flex">
               <Button
                 type="submit"
-                disabled={rateBusy}
+                disabled={rateBusy || rateLoading}
                 className="w-full sm:ml-auto sm:w-auto"
               >
-                {rateBusy ? "Saving…" : "Save today's rates"}
+                {rateBusy ? "Saving…" : `Save rates for ${isToday ? "today" : rateDate}`}
               </Button>
             </div>
           </form>

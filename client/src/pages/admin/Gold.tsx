@@ -17,7 +17,8 @@ import {
   Textarea,
 } from "../../components/ui";
 import { grams, shortDate, dateInput } from "../../format";
-import { useCurrency, relTime } from "../../currency";
+import { useCurrency, relTime, rateHint } from "../../currency";
+import type { CurrencyRateOn } from "../../types";
 import { useTeam } from "../../team";
 
 interface ListResp {
@@ -37,7 +38,7 @@ const blank = {
 };
 
 export default function Gold() {
-  const { currencies, base, byCode, fmt } = useCurrency();
+  const { currencies, base, byCode, fmt, rateOn } = useCurrency();
   const { activeTeamId, activeTeam } = useTeam();
   const [typeFilter, setTypeFilter] = useState("");
   const { data, loading, error, reload } = useFetch<ListResp>(
@@ -51,18 +52,38 @@ export default function Gold() {
   const [form, setForm] = useState(blank);
   const [formErr, setFormErr] = useState("");
   const [busy, setBusy] = useState(false);
+  // The rate as resolved for the form's own date (falls back to the nearest
+  // earlier saved rate) — shown in the hint; only auto-fills fxRate when the
+  // user actively changes the date or currency, never on opening an existing
+  // trade (that must keep showing its own stored rate until touched).
+  const [dateRateInfo, setDateRateInfo] = useState<CurrencyRateOn | null>(null);
+
+  async function refreshRateInfo(date: string, code: string, autofill: boolean) {
+    if (code === base.code) {
+      setDateRateInfo(null);
+      return;
+    }
+    const rows = await rateOn(date);
+    const info = rows.find((r) => r.code === code) ?? null;
+    setDateRateInfo(info);
+    if (autofill && info) {
+      setForm((f) => (f.date === date && f.currencyCode === code ? { ...f, fxRate: String(info.rate) } : f));
+    }
+  }
 
   function openAdd() {
     setEditing(null);
     setForm(blank);
     setFormErr("");
+    setDateRateInfo(null);
     setOpen(true);
   }
   function openEdit(t: GoldTxn) {
     setEditing(t);
+    const date = t.date.slice(0, 10);
     setForm({
       type: t.type,
-      date: t.date.slice(0, 10),
+      date,
       quality: t.quality,
       quantityGrams: String(t.quantityGrams),
       ratePerGram: String(t.ratePerGram),
@@ -72,6 +93,7 @@ export default function Gold() {
       notes: t.notes ?? "",
     });
     setFormErr("");
+    refreshRateInfo(date, t.currencyCode ?? "AED", false);
     setOpen(true);
   }
 
@@ -295,7 +317,11 @@ export default function Gold() {
               <Input
                 type="date"
                 value={form.date}
-                onChange={(e) => setForm({ ...form, date: e.target.value })}
+                onChange={(e) => {
+                  const date = e.target.value;
+                  setForm({ ...form, date });
+                  refreshRateInfo(date, form.currencyCode, true);
+                }}
               />
             </Field>
           </div>
@@ -329,14 +355,16 @@ export default function Gold() {
             <Field label="Currency" required>
               <Select
                 value={form.currencyCode}
-                onChange={(e) =>
+                onChange={(e) => {
+                  const code = e.target.value;
                   setForm({
                     ...form,
-                    currencyCode: e.target.value,
-                    // pull today's saved rate for the chosen currency
-                    fxRate: e.target.value === base.code ? "1" : String(byCode(e.target.value).rate),
-                  })
-                }
+                    currencyCode: code,
+                    // optimistic default while the date-resolved rate loads
+                    fxRate: code === base.code ? "1" : String(byCode(code).rate),
+                  });
+                  refreshRateInfo(form.date, code, true);
+                }}
               >
                 {currencies.map((c) => (
                   <option key={c.code} value={c.code}>
@@ -349,9 +377,13 @@ export default function Gold() {
               <Field
                 label={`1 ${form.currencyCode} = ? ${base.code}`}
                 required
-                hint={`Today's saved rate: ${byCode(form.currencyCode).rate} ${base.code} · updated ${relTime(
-                  byCode(form.currencyCode).rateUpdatedAt
-                )}. Override here if this trade used a different rate.`}
+                hint={`${
+                  dateRateInfo
+                    ? rateHint(dateRateInfo, form.date, base.code)
+                    : `Today's saved rate: ${byCode(form.currencyCode).rate} ${base.code} · updated ${relTime(
+                        byCode(form.currencyCode).rateUpdatedAt
+                      )}`
+                }. Override here if this trade used a different rate.`}
               >
                 <Input
                   type="number"
