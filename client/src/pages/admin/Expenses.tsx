@@ -261,7 +261,7 @@ export default function Expenses() {
         ))}
       </div>
 
-      <Card>
+      <Card variant="flat">
         <div className="flex items-center justify-between border-b border-graphite-100 px-3.5 py-2.5 sm:px-5 text-xs text-graphite-500">
           <span>{data?.expenses.length ?? 0} expenses</span>
           <span>

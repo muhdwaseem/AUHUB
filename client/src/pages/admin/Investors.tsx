@@ -335,7 +335,7 @@ export default function Investors() {
         }
       />
 
-      <Card>
+      <Card variant="flat">
         <div className="flex items-center justify-between border-b border-graphite-100 px-5 py-2.5 text-xs text-graphite-500">
           <span>{data?.investors.length ?? 0} investors</span>
           <span>

@@ -169,7 +169,7 @@ export default function Reports() {
       </Card>
 
       {/* Investor split */}
-      <Card title="Profit split by investor (overall)" className="mt-6">
+      <Card title="Profit split by investor (overall)" className="mt-6" variant="flat">
         {/* mobile: card per investor */}
         <div className="divide-y divide-graphite-50 sm:hidden">
           {data.investorSplit.length === 0 && (
@@ -307,7 +307,7 @@ export default function Reports() {
 
       {/* Expenses by investor */}
       {data.expensesByInvestor.length > 0 && (
-        <Card title="Expenses tied to investors" className="mt-6">
+        <Card title="Expenses tied to investors" className="mt-6" variant="flat">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
@@ -337,7 +337,7 @@ export default function Reports() {
 
       {/* Expenses by category */}
       {data.expensesByCategory.length > 0 && (
-        <Card title="Expenses by header" className="mt-6">
+        <Card title="Expenses by header" className="mt-6" variant="flat">
           <table className="w-full text-sm">
             <tbody className="divide-y divide-graphite-50">
               {data.expensesByCategory.map((c) => (
@@ -358,7 +358,7 @@ export default function Reports() {
       )}
 
       {/* Daily accounts */}
-      <Card title="Daily accounts" className="mt-6">
+      <Card title="Daily accounts" className="mt-6" variant="flat">
         {/* mobile: card per day, tap to expand the investor split */}
         <div className="divide-y divide-graphite-50 sm:hidden">
           {data.daily.length === 0 && (

@@ -232,7 +232,7 @@ export default function Gold() {
         ))}
       </div>
 
-      <Card>
+      <Card variant="flat">
         {data?.transactions.length === 0 && (
           <p className="px-4 py-14 text-center text-sm text-graphite-400">No trades recorded.</p>
         )}

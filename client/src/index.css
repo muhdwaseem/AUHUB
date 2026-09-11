@@ -251,6 +251,16 @@ body {
   backdrop-filter: blur(16px) saturate(165%);
   box-shadow: inset 0 1px 0 var(--sheen);
 }
+/* ── flat variant: an opaque card face, no backdrop-blur ──
+ * Tables are tall enough to span more than one ambient light blob, so the
+ * glass material's backdrop-blur picks up a different blended color at the
+ * top of the table than at the bottom, showing as a visible tint shift
+ * between rows. This trades the glass look for a steady, evenly-lit surface. */
+.glass-flat {
+  position: relative;
+  background: color-mix(in srgb, var(--wall) 74%, var(--color-graphite-900) 7%);
+  box-shadow: var(--edge), var(--drop);
+}
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
   .glass,
   .glass-thin {

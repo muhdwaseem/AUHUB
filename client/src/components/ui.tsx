@@ -37,15 +37,20 @@ export function Card({
   className = "",
   title,
   action,
+  variant = "glass",
 }: {
   children: ReactNode;
   className?: string;
   title?: ReactNode;
   action?: ReactNode;
+  /** "flat" trades the glass/backdrop-blur look for an opaque face — use it
+   *  for tables, where the blur otherwise tints rows differently depending
+   *  on which ambient light blob sits behind them. */
+  variant?: "glass" | "flat";
 }) {
   return (
     <div
-      className={`glass rounded-[20px] border border-graphite-200 bg-ink-800 ${className}`}
+      className={`${variant === "flat" ? "glass-flat" : "glass bg-ink-800"} rounded-[20px] border border-graphite-200 ${className}`}
     >
       <div className="relative z-[1]">
         {(title || action) && (
