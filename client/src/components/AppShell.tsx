@@ -136,7 +136,7 @@ export function AppShell({ nav, children }: { nav: NavItem[]; children: ReactNod
       {/* ── board ── */}
       <div className="min-w-0">
         {showTeamBar && (
-          <div className="flex items-center gap-2.5 border-b border-graphite-100 bg-ink-800/60 px-4 py-2 sm:px-6">
+          <div className="flex items-center gap-2.5 bg-ink-800/60 px-4 py-2 sm:px-6">
             <Layers size={15} className="flex-none text-graphite-400" />
             <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-graphite-400">
               Team
