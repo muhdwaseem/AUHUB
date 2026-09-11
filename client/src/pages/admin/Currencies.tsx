@@ -11,7 +11,13 @@ const todayStr = () => new Date().toISOString().slice(0, 10);
 
 export default function Currencies() {
   const { data, loading, error, reload } = useFetch<Currency[]>("/currencies");
-  const { rateOn } = useCurrency();
+  // This page's own useFetch keeps its own copy of the list for the
+  // management table below; every other page (trade/expense/investor forms)
+  // reads currencies from this shared context instead, which fetches once
+  // when the app loads and otherwise never refreshes on its own — so any
+  // add/edit/delete/rate-save here also has to nudge the context's reload,
+  // or the rest of the app keeps showing the old list until a full refresh.
+  const { rateOn, reload: reloadCtx } = useCurrency();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Currency | null>(null);
   const [form, setForm] = useState({ code: "", symbol: "", decimals: "2" });
@@ -89,6 +95,7 @@ export default function Currencies() {
       }
       setOpen(false);
       reload();
+      reloadCtx();
     } catch (err) {
       setFormErr(apiError(err));
     } finally {
@@ -101,6 +108,7 @@ export default function Currencies() {
     try {
       await api.delete(`/currencies/${c.id}`);
       reload();
+      reloadCtx();
     } catch (err) {
       alert(apiError(err));
     }
@@ -126,6 +134,7 @@ export default function Currencies() {
     try {
       await api.post("/currencies/rates", { date: rateDate, rates: rows });
       reload();
+      reloadCtx();
       // We know exactly what was just saved — update in place rather than
       // re-fetching (the rateOn() cache would still hand back the stale value).
       setResolvedInfo((prev) => {

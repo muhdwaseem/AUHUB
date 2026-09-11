@@ -51,13 +51,19 @@ interface CurrencyCtx {
   /** Every currency's rate as of `date` (yyyy-mm-dd), falling back to the
    *  nearest earlier saved rate. Cached per date for the life of the page. */
   rateOn: (date: string) => Promise<CurrencyRateOn[]>;
+  /** Re-fetch the currency list. The Currencies admin page keeps its own
+   *  separate fetch for its management table — call this too after any
+   *  add/edit/delete/rate-save so every other page (trade/expense/investor
+   *  forms) picks up the change immediately instead of only after a full
+   *  page reload. */
+  reload: () => void;
 }
 
 const Ctx = createContext<CurrencyCtx>(null as any);
 export const useCurrency = () => useContext(Ctx);
 
 export function CurrencyProvider({ children }: { children: ReactNode }) {
-  const { data } = useFetch<Currency[]>("/currencies");
+  const { data, reload } = useFetch<Currency[]>("/currencies");
   const currencies = data && data.length > 0 ? data : [FALLBACK_BASE];
   const base = currencies.find((c) => c.isBase) ?? currencies[0];
   const rateOnCache = useRef(new Map<string, Promise<CurrencyRateOn[]>>());
@@ -89,6 +95,6 @@ export function CurrencyProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <Ctx.Provider value={{ currencies, base, byCode, fmt, rateOn }}>{children}</Ctx.Provider>
+    <Ctx.Provider value={{ currencies, base, byCode, fmt, rateOn, reload }}>{children}</Ctx.Provider>
   );
 }
