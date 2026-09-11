@@ -258,6 +258,11 @@ export default function Gold() {
                 <div>
                   <div className="text-[10px] uppercase tracking-wide text-graphite-400">Rate/g</div>
                   <b className="tnum font-medium">{fmt(t.ratePerGram, t.currencyCode)}</b>
+                  {t.currencyCode !== base.code && (
+                    <span className="tnum block text-[11px] text-graphite-400">
+                      ≈ {fmt(t.ratePerGram * t.fxRate)}
+                    </span>
+                  )}
                 </div>
                 <div className="col-span-2 flex items-baseline justify-between border-t border-graphite-100 pt-1.5">
                   <span className="text-[10px] uppercase tracking-wide text-graphite-400">Total</span>
@@ -314,7 +319,14 @@ export default function Gold() {
                   </td>
                   <td className="px-5 py-3 align-top font-medium text-graphite-700">{t.quality}</td>
                   <td className="px-5 py-3 align-top text-right tnum">{grams(t.quantityGrams)}</td>
-                  <td className="px-5 py-3 align-top text-right tnum">{fmt(t.ratePerGram, t.currencyCode)}</td>
+                  <td className="px-5 py-3 align-top text-right">
+                    <div className="tnum">{fmt(t.ratePerGram, t.currencyCode)}</div>
+                    {t.currencyCode !== base.code && (
+                      <div className="text-[11px] tnum text-graphite-400">
+                        ≈ {fmt(t.ratePerGram * t.fxRate)}
+                      </div>
+                    )}
+                  </td>
                   <td className="px-5 py-3 align-top text-right">
                     <div className="tnum font-medium">{fmt(t.totalAmount, t.currencyCode)}</div>
                     {t.currencyCode !== base.code && (
