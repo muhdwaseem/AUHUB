@@ -93,20 +93,24 @@ reportsRouter.get("/summary", async (req, res) => {
   const companyEarnings =
     Math.round(split.reduce((s, r) => s + r.companyCut, 0) * 100) / 100;
 
-  // expense totals per header
+  // expense totals per header — in base currency, since expenses can be
+  // filed in different currencies and a raw sum would mix units.
   const byCategory = new Map<string, number>();
   for (const e of expenses) {
-    byCategory.set(e.category.name, (byCategory.get(e.category.name) ?? 0) + e.amount);
+    const baseAmount = e.amount * (e.fxRate ?? 1);
+    byCategory.set(e.category.name, (byCategory.get(e.category.name) ?? 0) + baseAmount);
   }
 
   // expense totals per investor (tagged), split into charged vs just-tagged
+  // — also in base currency, for the same reason.
   const byInvestor = new Map<string, { charged: number; tagged: number }>();
   for (const e of expenses) {
     if (!e.investorId) continue;
     const name = e.investor?.name ?? "Unknown";
+    const baseAmount = e.amount * (e.fxRate ?? 1);
     const cur = byInvestor.get(name) ?? { charged: 0, tagged: 0 };
-    if (e.chargedToInvestor) cur.charged += e.amount;
-    else cur.tagged += e.amount;
+    if (e.chargedToInvestor) cur.charged += baseAmount;
+    else cur.tagged += baseAmount;
     byInvestor.set(name, cur);
   }
 
