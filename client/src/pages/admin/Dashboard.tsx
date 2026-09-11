@@ -146,9 +146,9 @@ function SplitRing({ segments, centre, label }: { segments: number[]; centre: st
 function TicketBars({ tickets, max }: { tickets: GoldTxn[]; max: number }) {
   const W = 380;
   const H = 208;
-  const base = 170; // baseline
+  const baseline = 170;
   const top = 22;
-  const plotH = base - top;
+  const plotH = baseline - top;
   const barW = 28;
   const slot = tickets.length > 0 ? (W - 30 - barW) / Math.max(1, tickets.length - 1) : 58;
 
@@ -168,11 +168,14 @@ function TicketBars({ tickets, max }: { tickets: GoldTxn[]; max: number }) {
         {[28, 75, 122].map((y) => (
           <line key={y} x1="14" y1={y} x2={W - 8} y2={y} stroke="var(--color-graphite-100)" strokeWidth="1" />
         ))}
-        <line x1="14" y1={base} x2={W - 8} y2={base} stroke="var(--color-graphite-200)" strokeWidth="1" strokeDasharray="3 4" />
+        <line x1="14" y1={baseline} x2={W - 8} y2={baseline} stroke="var(--color-graphite-200)" strokeWidth="1" strokeDasharray="3 4" />
         {tickets.map((t, i) => {
-          const bh = Math.max((t.totalAmount / max) * plotH, 6);
+          // In base-currency terms — a raw t.totalAmount would mix units
+          // across trades priced in different currencies.
+          const value = t.totalAmount * (t.fxRate ?? 1);
+          const bh = Math.max((value / max) * plotH, 6);
           const x = 30 + i * slot;
-          const y = base - bh;
+          const y = baseline - bh;
           return (
             <g key={t.id}>
               <rect x={x} y={y} width={barW} height={bh} rx="14" fill={t.type === "BUY" ? "url(#buyBar)" : "url(#sellBar)"} />
@@ -180,7 +183,7 @@ function TicketBars({ tickets, max }: { tickets: GoldTxn[]; max: number }) {
                 x={x + barW / 2} y={y - 8} textAnchor="middle"
                 className="fill-[var(--color-graphite-700)] font-mono text-[9.5px]"
               >
-                {(t.totalAmount / 1000).toFixed(1)}
+                {(value / 1000).toFixed(1)}
               </text>
               <text
                 x={x + barW / 2} y={188} textAnchor="middle"
@@ -294,7 +297,7 @@ function TrendChart({ daily }: { daily: ReportSummary["daily"] }) {
 
 export default function Dashboard() {
   const { activeTeamId } = useTeam();
-  const { base } = useCurrency();
+  const { base, fmt } = useCurrency();
   const { data: s, loading, error } = useFetch<ReportSummary>(
     activeTeamId ? `/reports/summary?teamId=${activeTeamId}` : null,
     [activeTeamId]
@@ -322,7 +325,7 @@ export default function Dashboard() {
 
   const txns = g?.transactions ?? [];
   const recent = [...txns].sort((a, b) => +new Date(b.date) - +new Date(a.date)).slice(0, 6);
-  const maxTicket = Math.max(1, ...txns.map((t) => t.totalAmount));
+  const maxTicket = Math.max(1, ...txns.map((t) => t.totalAmount * (t.fxRate ?? 1)));
 
   const cats = [...(s.expensesByCategory ?? [])].sort((a, b) => b.amount - a.amount);
   const maxCat = Math.max(1, ...cats.map((c) => c.amount));
@@ -516,7 +519,7 @@ export default function Dashboard() {
 
         {/* ── bars ── */}
         <Tile area="bars">
-          <TileHead title="Trade value" right="Per ticket · AED thousands" />
+          <TileHead title="Trade value" right={`Per ticket · ${base.code} thousands`} />
           <TicketBars tickets={recent.slice().reverse()} max={maxTicket} />
         </Tile>
 
@@ -629,11 +632,11 @@ export default function Dashboard() {
                         <em className="font-mono text-[10.5px] not-italic text-graphite-400">{t.quality}</em>
                       </b>
                       <small className="font-mono text-[10.5px] text-graphite-500">
-                        {day} · {num(t.quantityGrams, 0)} g @ {num(t.ratePerGram)}
+                        {day} · {num(t.quantityGrams, 0)} g @ {num(t.ratePerGram * (t.fxRate ?? 1))}
                       </small>
                     </div>
                     <span className="whitespace-nowrap font-mono text-[12.5px] font-semibold tabular-nums text-graphite-900">
-                      {num(t.totalAmount)}
+                      {fmt(t.totalAmount * (t.fxRate ?? 1))}
                     </span>
                   </div>
                   {/* desktop: grid row */}
@@ -644,8 +647,8 @@ export default function Dashboard() {
                       {t.counterparty || "—"} <em className="font-mono text-[10.5px] not-italic text-graphite-400">{t.quality}</em>
                     </span>
                     <span className="text-right font-mono text-[12.5px] tabular-nums text-graphite-700">{num(t.quantityGrams, 0)} g</span>
-                    <span className="text-right font-mono text-[12.5px] tabular-nums text-graphite-700">{num(t.ratePerGram)}</span>
-                    <span className="text-right font-mono text-[12.5px] font-medium tabular-nums text-graphite-900">{num(t.totalAmount)}</span>
+                    <span className="text-right font-mono text-[12.5px] tabular-nums text-graphite-700">{num(t.ratePerGram * (t.fxRate ?? 1))}</span>
+                    <span className="text-right font-mono text-[12.5px] font-medium tabular-nums text-graphite-900">{fmt(t.totalAmount * (t.fxRate ?? 1))}</span>
                   </div>
                 </div>
               );
