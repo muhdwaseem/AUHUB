@@ -88,53 +88,57 @@ export function ConversionHops({
               <Trash2 size={13} />
             </button>
           </div>
-          <div className="mt-1.5 grid grid-cols-2 gap-2">
+          <div className="mt-1.5 grid grid-cols-1 gap-2 sm:grid-cols-2">
             <div className="flex gap-1.5">
-              <Input
-                type="number"
-                step="0.0001"
-                min="0"
-                placeholder="Amount"
-                value={h.fromAmount}
-                onChange={(e) => update(i, { fromAmount: e.target.value })}
-                className="min-w-0 flex-1"
-              />
-              <Select
-                value={h.fromCurrency}
-                onChange={(e) => update(i, { fromCurrency: e.target.value })}
-                className="w-24 flex-none"
-              >
-                {currencies.map((c) => (
-                  <option key={c.code} value={c.code}>
-                    {c.code}
-                  </option>
-                ))}
-              </Select>
+              <div className="min-w-0 flex-1">
+                <Input
+                  type="number"
+                  step="0.0001"
+                  min="0"
+                  placeholder="Amount"
+                  value={h.fromAmount}
+                  onChange={(e) => update(i, { fromAmount: e.target.value })}
+                />
+              </div>
+              <div className="w-24 flex-none">
+                <Select
+                  value={h.fromCurrency}
+                  onChange={(e) => update(i, { fromCurrency: e.target.value })}
+                >
+                  {currencies.map((c) => (
+                    <option key={c.code} value={c.code}>
+                      {c.code}
+                    </option>
+                  ))}
+                </Select>
+              </div>
             </div>
             <div className="flex gap-1.5">
-              <Input
-                type="number"
-                step="0.0001"
-                min="0"
-                placeholder="Amount"
-                value={h.toAmount}
-                onChange={(e) => update(i, { toAmount: e.target.value })}
-                className="min-w-0 flex-1"
-              />
-              <Select
-                value={h.toCurrency}
-                onChange={(e) => update(i, { toCurrency: e.target.value })}
-                className="w-24 flex-none"
-              >
-                {currencies.map((c) => (
-                  <option key={c.code} value={c.code}>
-                    {c.code}
-                  </option>
-                ))}
-              </Select>
+              <div className="min-w-0 flex-1">
+                <Input
+                  type="number"
+                  step="0.0001"
+                  min="0"
+                  placeholder="Amount"
+                  value={h.toAmount}
+                  onChange={(e) => update(i, { toAmount: e.target.value })}
+                />
+              </div>
+              <div className="w-24 flex-none">
+                <Select
+                  value={h.toCurrency}
+                  onChange={(e) => update(i, { toCurrency: e.target.value })}
+                >
+                  {currencies.map((c) => (
+                    <option key={c.code} value={c.code}>
+                      {c.code}
+                    </option>
+                  ))}
+                </Select>
+              </div>
             </div>
           </div>
-          <div className="mt-1.5 grid grid-cols-2 gap-2">
+          <div className="mt-1.5 grid grid-cols-1 gap-2 sm:grid-cols-2">
             <Input type="date" value={h.date} onChange={(e) => update(i, { date: e.target.value })} />
             <Input
               placeholder="Notes (optional)"
