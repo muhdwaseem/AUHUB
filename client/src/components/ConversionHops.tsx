@@ -28,7 +28,7 @@ export function composeRate(hops: HopRow[]): number | null {
     if (!(from > 0) || !(to > 0)) return null;
     rate *= to / from;
   }
-  return Math.round(rate * 1e6) / 1e6;
+  return Math.round(rate * 1e9) / 1e9;
 }
 
 /**
@@ -93,7 +93,7 @@ export function ConversionHops({
               <div className="min-w-0 flex-1">
                 <Input
                   type="number"
-                  step="0.0001"
+                  step="any"
                   min="0"
                   placeholder="Amount"
                   value={h.fromAmount}
@@ -117,7 +117,7 @@ export function ConversionHops({
               <div className="min-w-0 flex-1">
                 <Input
                   type="number"
-                  step="0.0001"
+                  step="any"
                   min="0"
                   placeholder="Amount"
                   value={h.toAmount}
@@ -150,7 +150,7 @@ export function ConversionHops({
             <p className="mt-1 text-[10.5px] text-graphite-400">
               1 {h.fromCurrency} ={" "}
               {(Number(h.toAmount) / Number(h.fromAmount)).toLocaleString("en-US", {
-                maximumFractionDigits: 6,
+                maximumFractionDigits: 9,
               })}{" "}
               {h.toCurrency}
             </p>
@@ -171,7 +171,7 @@ export function ConversionHops({
           {endsInBase ? (
             <>
               Chain works out to 1 {hops[0].fromCurrency} ={" "}
-              {composite.toLocaleString("en-US", { maximumFractionDigits: 6 })} {baseCode}.
+              {composite.toLocaleString("en-US", { maximumFractionDigits: 9 })} {baseCode}.
               {onApplyRate && (
                 <button
                   type="button"

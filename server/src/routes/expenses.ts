@@ -67,7 +67,7 @@ const hopData = (hops: z.infer<typeof hopSchema>[] | undefined) =>
       fromAmount: h.fromAmount,
       toCurrency: h.toCurrency,
       toAmount: h.toAmount,
-      rate: Math.round((h.toAmount / h.fromAmount) * 1e6) / 1e6,
+      rate: Math.round((h.toAmount / h.fromAmount) * 1e9) / 1e9,
       date: h.date,
       notes: h.notes || null,
     }));

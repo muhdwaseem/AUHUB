@@ -207,7 +207,7 @@ export default function Currencies() {
                         <Input
                           id={`rate-${c.code}`}
                           type="number"
-                          step="0.0001"
+                          step="any"
                           min="0"
                           inputMode="decimal"
                           disabled={rateLoading}
@@ -218,7 +218,7 @@ export default function Currencies() {
                       </div>
                     </div>
                     <p className="mt-2 text-[11px] text-graphite-400">
-                      {r > 0 && `≈ ${(1 / r).toLocaleString("en-US", { maximumFractionDigits: 4 })} ${c.code} per ${baseCode} · `}
+                      {r > 0 && `≈ ${(1 / r).toLocaleString("en-US", { maximumFractionDigits: 9 })} ${c.code} per ${baseCode} · `}
                       {rateLoading ? (
                         "loading…"
                       ) : info?.exact ? (
@@ -267,7 +267,7 @@ export default function Currencies() {
                   <Badge tone="gold">base</Badge>
                 ) : (
                   <span className="text-xs text-graphite-400">
-                    1 {c.code} = {c.rate.toLocaleString("en-US", { maximumFractionDigits: 4 })}{" "}
+                    1 {c.code} = {c.rate.toLocaleString("en-US", { maximumFractionDigits: 9 })}{" "}
                     {baseCode} · {relTime(c.rateUpdatedAt)}
                   </span>
                 )}

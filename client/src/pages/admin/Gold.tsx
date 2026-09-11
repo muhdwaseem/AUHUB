@@ -429,7 +429,7 @@ export default function Gold() {
               >
                 <Input
                   type="number"
-                  step="0.0001"
+                  step="any"
                   min="0"
                   value={form.fxRate}
                   onChange={(e) => setForm({ ...form, fxRate: e.target.value })}
