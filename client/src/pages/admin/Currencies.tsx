@@ -323,11 +323,15 @@ export default function Currencies() {
               maxLength={6}
             />
           </Field>
-          <Field label="Decimal places" required hint="2 for most; 0 for currencies like IDR / VND.">
+          <Field
+            label="Decimal places"
+            required
+            hint="2 for most; 0 for currencies like IDR / VND; up to 9 for high-precision ones like a stablecoin."
+          >
             <Input
               type="number"
               min={0}
-              max={4}
+              max={9}
               value={form.decimals}
               onChange={(e) => setForm({ ...form, decimals: e.target.value })}
             />

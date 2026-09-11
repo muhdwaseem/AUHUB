@@ -22,7 +22,7 @@ const currencySchema = z.object({
     .toUpperCase()
     .regex(/^[A-Z]{2,6}$/, "Code must be 2–6 letters (e.g. USD)"),
   symbol: z.string().trim().min(1).max(6),
-  decimals: z.coerce.number().int().min(0).max(4),
+  decimals: z.coerce.number().int().min(0).max(9),
   rate: z.coerce.number().positive("Rate must be greater than 0").optional(),
 });
 
