@@ -72,7 +72,7 @@ export default function Investors() {
 
   function openAdd() {
     setEditing(null);
-    setForm(blank);
+    setForm({ ...blank, currencyCode: base.code });
     setFormErr("");
     setFormOpen(true);
   }

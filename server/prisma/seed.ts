@@ -9,18 +9,18 @@ const ADMIN_USERNAME = process.env.SEED_ADMIN_USERNAME || "admin";
 
 const DEFAULT_CATEGORIES = ["Flight", "Total Travel", "Visa", "Hotel Bookings"];
 
-// `rate` = AED per 1 unit of that currency. These are only starting values —
-// the admin keeps them current from the "Today's rates" panel; the seed never
-// overwrites a rate that's already been set manually.
+// `rate` = base currency (USD) per 1 unit of that currency. These are only
+// starting values — the admin keeps them current from the "Today's rates"
+// panel; the seed never overwrites a rate that's already been set manually.
 const CURRENCIES = [
-  { code: "AED", symbol: "AED", decimals: 2, isBase: true, rate: 1 },
-  { code: "USD", symbol: "$", decimals: 2, isBase: false, rate: 3.6725 },
-  { code: "THB", symbol: "฿", decimals: 2, isBase: false, rate: 0.105 },
-  { code: "IDR", symbol: "Rp", decimals: 0, isBase: false, rate: 0.00024 },
+  { code: "USD", symbol: "$", decimals: 2, isBase: true, rate: 1 },
+  { code: "AED", symbol: "AED", decimals: 2, isBase: false, rate: 0.2723 },
+  { code: "THB", symbol: "฿", decimals: 2, isBase: false, rate: 0.0286 },
+  { code: "IDR", symbol: "Rp", decimals: 0, isBase: false, rate: 0.0000653 },
   // A conversion-hop target for gold paid via a stablecoin (e.g. THB -> USDT
   // -> AED) — tracks its own daily rate like any other currency, starting
   // near its real-world USD peg.
-  { code: "USDT", symbol: "USDT", decimals: 2, isBase: false, rate: 3.6725 },
+  { code: "USDT", symbol: "USDT", decimals: 2, isBase: false, rate: 1 },
 ];
 
 async function main() {
@@ -89,7 +89,7 @@ async function main() {
       data: { rate: c.rate },
     });
   }
-  console.log(`Seeded ${CURRENCIES.length} currencies (base: AED)`);
+  console.log(`Seeded ${CURRENCIES.length} currencies (base: USD)`);
 
   // --- Demo data (only if the book is empty) ---
   const investorCount = await prisma.investor.count();

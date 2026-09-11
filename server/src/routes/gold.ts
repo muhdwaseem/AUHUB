@@ -2,6 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../lib/prisma.js";
 import { authRequired, adminRequired } from "../lib/auth.js";
+import { getBaseCurrencyCode } from "../lib/currency.js";
 
 export const goldRouter = Router();
 goldRouter.use(authRequired, adminRequired);
@@ -89,7 +90,7 @@ goldRouter.post("/", async (req, res) => {
   if (!d.teamId) return res.status(400).json({ error: "A team is required" });
   const team = await prisma.team.findUnique({ where: { id: d.teamId } });
   if (!team) return res.status(400).json({ error: "Selected team not found" });
-  const cur = await resolveCurrency(d.currencyCode ?? "AED", d.fxRate);
+  const cur = await resolveCurrency(d.currencyCode ?? (await getBaseCurrencyCode()), d.fxRate);
   if (!cur) return res.status(400).json({ error: `Unknown currency "${d.currencyCode}"` });
   const txn = await prisma.goldTransaction.create({
     data: {

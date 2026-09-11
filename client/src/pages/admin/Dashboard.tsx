@@ -8,6 +8,7 @@ import { Spinner, ErrorNote } from "../../components/ui";
 import { WorldMap } from "../../components/WorldMap";
 import { money, grams, num, pct, shortDate } from "../../format";
 import { useTeam } from "../../team";
+import { useCurrency } from "../../currency";
 
 /* ── tile shell (frosted glass) ── */
 function Tile({ area, className = "", children }: { area: string; className?: string; children: ReactNode }) {
@@ -293,6 +294,7 @@ function TrendChart({ daily }: { daily: ReportSummary["daily"] }) {
 
 export default function Dashboard() {
   const { activeTeamId } = useTeam();
+  const { base } = useCurrency();
   const { data: s, loading, error } = useFetch<ReportSummary>(
     activeTeamId ? `/reports/summary?teamId=${activeTeamId}` : null,
     [activeTeamId]
@@ -441,7 +443,7 @@ export default function Dashboard() {
             <div>
               <Kicker>Net · after expenses</Kicker>
               <div className="my-2 font-serif text-[26px] sm:text-[33px] font-semibold leading-[1.05] -tracking-[0.03em] tabular-nums text-graphite-900">
-                <span className="mr-1.5 text-[14px] font-normal text-graphite-500">AED</span>
+                <span className="mr-1.5 text-[14px] font-normal text-graphite-500">{base.symbol}</span>
                 {num(o.netProfit)}
               </div>
               <Chip tone={o.netProfit >= 0 ? "pos" : "neg"}>
@@ -451,7 +453,7 @@ export default function Dashboard() {
             <div className="sm:border-l sm:border-ink-700 sm:pl-4">
               <Kicker>Gross · before expenses</Kicker>
               <div className="my-2 font-serif text-[26px] sm:text-[33px] font-semibold leading-[1.05] -tracking-[0.03em] tabular-nums text-gold-500">
-                <span className="mr-1.5 text-[14px] font-normal text-graphite-500">AED</span>
+                <span className="mr-1.5 text-[14px] font-normal text-graphite-500">{base.symbol}</span>
                 {num(o.grossProfit)}
               </div>
               <Chip tone="gold">{num(marginPerG)} /g margin</Chip>

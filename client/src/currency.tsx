@@ -1,12 +1,13 @@
-import { createContext, useContext, useRef, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useRef, type ReactNode } from "react";
 import { api } from "./api";
 import { useFetch } from "./useApi";
+import { setMoneyCurrency } from "./format";
 import type { Currency, CurrencyRateOn } from "./types";
 
 const FALLBACK_BASE: Currency = {
   id: "",
-  code: "AED",
-  symbol: "AED",
+  code: "USD",
+  symbol: "$",
   decimals: 2,
   isBase: true,
   rate: 1,
@@ -67,6 +68,12 @@ export function CurrencyProvider({ children }: { children: ReactNode }) {
   const currencies = data && data.length > 0 ? data : [FALLBACK_BASE];
   const base = currencies.find((c) => c.isBase) ?? currencies[0];
   const rateOnCache = useRef(new Map<string, Promise<CurrencyRateOn[]>>());
+
+  // Keep money()'s formatter (used outside this context, e.g. in Dashboard's
+  // report summaries) tracking whichever currency is actually base.
+  useEffect(() => {
+    setMoneyCurrency(base.symbol, base.decimals);
+  }, [base.symbol, base.decimals]);
 
   const byCode = (code: string | null | undefined) =>
     currencies.find((c) => c.code === code) ?? base;

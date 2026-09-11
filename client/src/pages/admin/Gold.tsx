@@ -80,7 +80,7 @@ export default function Gold() {
 
   function openAdd() {
     setEditing(null);
-    setForm(blank);
+    setForm({ ...blank, currencyCode: base.code });
     setFormErr("");
     setDateRateInfo(null);
     setOpen(true);

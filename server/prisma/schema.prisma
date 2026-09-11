@@ -100,7 +100,7 @@ model Investor {
   /// so a team's active shares always total ~100.
   sharePercentage Float @default(0) // 0 - 100
   capitalInvested Float @default(0) // the member's capital, in `currencyCode`
-  currencyCode    String @default("AED")
+  currencyCode    String @default("USD")
   fxRate          Float  @default(1) // capitalInvested * fxRate = capital in base currency
 
   /// Per-member override of the team's default company cut %. null = inherit
@@ -162,7 +162,7 @@ model Expense {
   teamId String?
 
   amount       Float // in `currencyCode`
-  currencyCode String          @default("AED")
+  currencyCode String          @default("USD")
   fxRate       Float           @default(1) // amount * fxRate = amount in base currency
   date         DateTime
   description String?
@@ -209,7 +209,7 @@ model GoldTransaction {
   quantityGrams Float
   ratePerGram   Float // in `currencyCode`
   totalAmount   Float // quantityGrams * ratePerGram, in `currencyCode`
-  currencyCode  String  @default("AED")
+  currencyCode  String  @default("USD")
   fxRate        Float   @default(1) // ratePerGram/totalAmount * fxRate = value in base currency
   counterparty  String? // supplier / buyer name
   notes         String?

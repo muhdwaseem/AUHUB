@@ -1,12 +1,22 @@
-const currencyFmt = new Intl.NumberFormat("en-AE", {
-  style: "currency",
-  currency: "AED",
-  maximumFractionDigits: 2,
-});
+// Tracks whichever currency is currently flagged base — set once by
+// CurrencyProvider whenever that changes, so `money()` never hardcodes one
+// currency's symbol/decimals across a base-currency switch. Manual
+// "symbol number" formatting (not Intl's currency style) since the base can
+// be any currency code the admin defines, not necessarily a real ISO 4217 one.
+let baseSymbol = "USD";
+let baseFmt = new Intl.NumberFormat("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+export function setMoneyCurrency(symbol: string, decimals: number): void {
+  baseSymbol = symbol;
+  baseFmt = new Intl.NumberFormat("en-US", {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  });
+}
 
 export function money(n: number | null | undefined): string {
   if (n === null || n === undefined || Number.isNaN(n)) return "—";
-  return currencyFmt.format(n);
+  return `${baseSymbol} ${baseFmt.format(n)}`;
 }
 
 export function grams(n: number | null | undefined): string {

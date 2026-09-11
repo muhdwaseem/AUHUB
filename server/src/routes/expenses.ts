@@ -3,6 +3,7 @@ import { z } from "zod";
 import { prisma } from "../lib/prisma.js";
 import { authRequired, adminRequired } from "../lib/auth.js";
 import { upload, putAttachment, deleteAttachment } from "../lib/upload.js";
+import { getBaseCurrencyCode } from "../lib/currency.js";
 
 export const expensesRouter = Router();
 expensesRouter.use(authRequired, adminRequired);
@@ -173,7 +174,10 @@ expensesRouter.post("/", upload.array("files", 10), async (req, res) => {
   );
   if (linkErr) return res.status(400).json({ error: linkErr });
 
-  const cur = await resolveCurrency(parsed.data.currencyCode ?? "AED", parsed.data.fxRate);
+  const cur = await resolveCurrency(
+    parsed.data.currencyCode ?? (await getBaseCurrencyCode()),
+    parsed.data.fxRate
+  );
   if (!cur) return res.status(400).json({ error: `Unknown currency "${parsed.data.currencyCode}"` });
 
   const files = (req.files as Express.Multer.File[]) ?? [];

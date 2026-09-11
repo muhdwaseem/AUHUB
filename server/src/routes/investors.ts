@@ -4,6 +4,7 @@ import { z } from "zod";
 import { prisma } from "../lib/prisma.js";
 import { authRequired, adminRequired } from "../lib/auth.js";
 import { makePassword, makeUsername } from "../lib/credentials.js";
+import { getBaseCurrencyCode } from "../lib/currency.js";
 
 export const investorsRouter = Router();
 investorsRouter.use(authRequired, adminRequired);
@@ -163,7 +164,7 @@ investorsRouter.post("/", async (req, res) => {
   const team = await prisma.team.findUnique({ where: { id: d.teamId } });
   if (!team) return res.status(400).json({ error: "Selected team not found" });
 
-  const cur = await resolveCurrency(d.currencyCode ?? "AED", d.fxRate);
+  const cur = await resolveCurrency(d.currencyCode ?? (await getBaseCurrencyCode()), d.fxRate);
   if (!cur) return res.status(400).json({ error: `Unknown currency "${d.currencyCode}"` });
   const partnerErr = validatePartners(d.partners);
   if (partnerErr) return res.status(400).json({ error: partnerErr });

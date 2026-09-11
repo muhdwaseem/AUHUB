@@ -91,7 +91,7 @@ export default function Expenses() {
 
   function openAdd() {
     setEditing(null);
-    setForm({ ...blankForm, categoryId: cats?.[0]?.id ?? "" });
+    setForm({ ...blankForm, categoryId: cats?.[0]?.id ?? "", currencyCode: base.code });
     setFiles([]);
     setFormErr("");
     setDateRateInfo(null);
