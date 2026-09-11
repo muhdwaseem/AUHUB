@@ -117,6 +117,13 @@ export default function Gold() {
 
   async function submit(e: FormEvent) {
     e.preventDefault();
+    // A blank fx-rate must never silently become "1" — that would record a
+    // foreign-currency trade as if it cost 1:1 in the base currency. Block
+    // the submit instead and make the admin actually enter it.
+    if (form.currencyCode !== base.code && !(Number(form.fxRate) > 0)) {
+      setFormErr(`Enter the exchange rate (1 ${form.currencyCode} = ? ${base.code}) before saving.`);
+      return;
+    }
     setBusy(true);
     setFormErr("");
     try {
@@ -128,7 +135,7 @@ export default function Gold() {
         quantityGrams: Number(form.quantityGrams),
         ratePerGram: Number(form.ratePerGram),
         currencyCode: form.currencyCode,
-        fxRate: form.currencyCode === base.code ? 1 : Number(form.fxRate || 1),
+        fxRate: form.currencyCode === base.code ? 1 : Number(form.fxRate),
         counterparty: form.counterparty,
         notes: form.notes,
         hops: form.hops.map((h, i) => ({

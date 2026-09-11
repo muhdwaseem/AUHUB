@@ -107,6 +107,12 @@ export default function Investors() {
       setFormErr(`Profit partners must total 100% (currently ${partnerTotal.toFixed(2)}%).`);
       return;
     }
+    // A blank fx-rate must never silently become "1" — that would record
+    // foreign-currency capital as if it were 1:1 with the base currency.
+    if (form.currencyCode !== base.code && !(Number(form.fxRate) > 0)) {
+      setFormErr(`Enter the exchange rate (1 ${form.currencyCode} = ? ${base.code}) before saving.`);
+      return;
+    }
     setBusy(true);
     setFormErr("");
     try {
@@ -117,7 +123,7 @@ export default function Investors() {
         teamId: activeTeamId,
         capitalInvested: Number(form.capitalInvested || 0),
         currencyCode: form.currencyCode,
-        fxRate: form.currencyCode === base.code ? 1 : Number(form.fxRate || 1),
+        fxRate: form.currencyCode === base.code ? 1 : Number(form.fxRate),
         companyCutPct: form.companyCutPct === "" ? null : Number(form.companyCutPct),
         notes: form.notes,
         status: form.status,
