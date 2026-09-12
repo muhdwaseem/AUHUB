@@ -89,7 +89,7 @@ export interface ReportSummary {
   investorSplit: InvestorSplitRow[];
   dailyInvestorSplit: { date: string; rows: InvestorSplitRow[] }[];
   companyEarnings: number;
-  expensesByCategory: { name: string; amount: number }[];
+  expensesByCategory: { name: string; amount: number; byCurrency: { code: string; amount: number }[] }[];
   expensesByInvestor: { name: string; charged: number; tagged: number }[];
   totalActiveShare: number;
   counts: { investors: number; transactions: number; expenses: number };

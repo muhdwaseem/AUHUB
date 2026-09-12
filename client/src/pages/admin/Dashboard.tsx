@@ -2,7 +2,7 @@ import { type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { AlertTriangle, ArrowUpRight, Search } from "lucide-react";
 import { useFetch } from "../../useApi";
-import type { ReportSummary, GoldTxn, Expense } from "../../types";
+import type { ReportSummary, GoldTxn } from "../../types";
 import { PageHeader, Dot } from "../../components/AppShell";
 import { Spinner, ErrorNote } from "../../components/ui";
 import { WorldMap } from "../../components/WorldMap";
@@ -306,10 +306,6 @@ export default function Dashboard() {
     activeTeamId ? `/gold?teamId=${activeTeamId}` : null,
     [activeTeamId]
   );
-  const { data: expensesData } = useFetch<{ expenses: Expense[] }>(
-    activeTeamId ? `/expenses?teamId=${activeTeamId}` : null,
-    [activeTeamId]
-  );
 
   if (!activeTeamId) return <ErrorNote>Select a team first.</ErrorNote>;
   if (loading) return <Spinner />;
@@ -330,10 +326,10 @@ export default function Dashboard() {
   const txns = g?.transactions ?? [];
   const recent = [...txns].sort((a, b) => +new Date(b.date) - +new Date(a.date)).slice(0, 6);
   const maxTicket = Math.max(1, ...txns.map((t) => t.totalAmount * (t.fxRate ?? 1)));
-  const expenseCurrencies = [...new Set((expensesData?.expenses ?? []).map((e) => e.currencyCode))].sort();
 
   const cats = [...(s.expensesByCategory ?? [])].sort((a, b) => b.amount - a.amount);
   const maxCat = Math.max(1, ...cats.map((c) => c.amount));
+  const expenseCurrencies = [...new Set(cats.flatMap((c) => c.byCurrency.map((bc) => bc.code)))].sort();
 
   const split = s.investorSplit;
   const distributed = split.reduce((a, r) => a + r.netShare, 0);
@@ -717,12 +713,19 @@ export default function Dashboard() {
             <span className="font-serif text-[23px] font-semibold -tracking-[0.03em] text-negative sm:text-[29px]">{money(o.totalExpenses)}</span>
           </div>
           <div className="flex flex-1 flex-col gap-3.5">
-            {cats.map((c) => (
+            {cats.map((c) => {
+              const showNative = c.byCurrency.length > 1 || c.byCurrency[0]?.code !== base.code;
+              return (
               <div key={c.name}>
                 <div className="mb-1.5 flex justify-between gap-2.5 text-[12.5px]">
                   <span className="text-graphite-800">{c.name}</span>
                   <b className="font-mono font-semibold tabular-nums">{num(c.amount)}</b>
                 </div>
+                {showNative && (
+                  <div className="mb-1.5 text-right text-[11px] text-graphite-500">
+                    {c.byCurrency.map((bc) => fmt(bc.amount, bc.code)).join(" + ")}
+                  </div>
+                )}
                 <div className="h-1.5 overflow-hidden rounded-full bg-ink-700">
                   <i
                     className="block h-full rounded-full bg-[linear-gradient(90deg,var(--color-gold-lo),var(--color-gold-500))]"
@@ -730,7 +733,8 @@ export default function Dashboard() {
                   />
                 </div>
               </div>
-            ))}
+              );
+            })}
             {cats.length === 0 && <p className="py-4 text-[12px] text-graphite-500">No expenses recorded yet.</p>}
           </div>
           <div className="mt-3.5 rounded-[13px] bg-ink-900 px-3.5 py-3 text-[11.5px] leading-[1.5] text-graphite-500">

@@ -1,11 +1,12 @@
 import { Link } from "react-router-dom";
 import { AlertTriangle } from "lucide-react";
 import { useFetch } from "../../useApi";
-import type { ReportSummary, TeamOverviewRow, Expense } from "../../types";
+import type { ReportSummary, TeamOverviewRow } from "../../types";
 import { PageHeader, Dot } from "../../components/AppShell";
 import { Spinner, ErrorNote, Stat, Card } from "../../components/ui";
 import { money, grams, num, pct } from "../../format";
 import { useTeam } from "../../team";
+import { useCurrency } from "../../currency";
 
 /**
  * The everyday cockpit: the ~6 figures that actually drive a decision, plus the
@@ -14,15 +15,12 @@ import { useTeam } from "../../team";
  */
 export default function DashboardLean() {
   const { activeTeamId, activeTeam, teams, setActiveTeam } = useTeam();
+  const { base, fmt } = useCurrency();
   const { data: s, loading, error } = useFetch<ReportSummary>(
     activeTeamId ? `/reports/summary?teamId=${activeTeamId}` : null,
     [activeTeamId]
   );
   const { data: teamRows } = useFetch<TeamOverviewRow[]>("/reports/teams");
-  const { data: expensesData } = useFetch<{ expenses: Expense[] }>(
-    activeTeamId ? `/expenses?teamId=${activeTeamId}` : null,
-    [activeTeamId]
-  );
 
   if (!activeTeamId)
     return (
@@ -47,7 +45,7 @@ export default function DashboardLean() {
   const shareOff = Math.abs(s.totalActiveShare - 100) > 0.01;
   const cats = [...(s.expensesByCategory ?? [])].sort((a, b) => b.amount - a.amount);
   const maxCat = Math.max(1, ...cats.map((c) => c.amount));
-  const expenseCurrencies = [...new Set((expensesData?.expenses ?? []).map((e) => e.currencyCode))].sort();
+  const expenseCurrencies = [...new Set(cats.flatMap((c) => c.byCurrency.map((bc) => bc.code)))].sort();
 
   return (
     <>
@@ -274,20 +272,29 @@ export default function DashboardLean() {
           }
         >
           <div className="space-y-3 p-4">
-            {cats.slice(0, 5).map((c) => (
-              <div key={c.name}>
-                <div className="mb-1 flex justify-between text-[12.5px]">
-                  <span className="text-graphite-800">{c.name}</span>
-                  <b className="font-mono tabular-nums">{money(c.amount)}</b>
+            {cats.slice(0, 5).map((c) => {
+              const showNative =
+                c.byCurrency.length > 1 || c.byCurrency[0]?.code !== base.code;
+              return (
+                <div key={c.name}>
+                  <div className="mb-1 flex justify-between text-[12.5px]">
+                    <span className="text-graphite-800">{c.name}</span>
+                    <b className="font-mono tabular-nums">{money(c.amount)}</b>
+                  </div>
+                  {showNative && (
+                    <div className="mb-1 text-right text-[11px] text-graphite-500">
+                      {c.byCurrency.map((bc) => fmt(bc.amount, bc.code)).join(" + ")}
+                    </div>
+                  )}
+                  <div className="h-1.5 overflow-hidden rounded-full bg-ink-700">
+                    <i
+                      className="block h-full rounded-full bg-[linear-gradient(90deg,var(--color-gold-lo),var(--color-gold-500))]"
+                      style={{ width: `${(c.amount / maxCat) * 100}%` }}
+                    />
+                  </div>
                 </div>
-                <div className="h-1.5 overflow-hidden rounded-full bg-ink-700">
-                  <i
-                    className="block h-full rounded-full bg-[linear-gradient(90deg,var(--color-gold-lo),var(--color-gold-500))]"
-                    style={{ width: `${(c.amount / maxCat) * 100}%` }}
-                  />
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </Card>
       )}

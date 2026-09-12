@@ -94,11 +94,16 @@ reportsRouter.get("/summary", async (req, res) => {
     Math.round(split.reduce((s, r) => s + r.companyCut, 0) * 100) / 100;
 
   // expense totals per header — in base currency, since expenses can be
-  // filed in different currencies and a raw sum would mix units.
-  const byCategory = new Map<string, number>();
+  // filed in different currencies and a raw sum would mix units. Also keeps
+  // a native-currency breakdown per header, so the UI can show e.g.
+  // "$388.66 — INR 32,000 + THB 12,000" instead of just the converted total.
+  const byCategory = new Map<string, { amount: number; byCurrency: Map<string, number> }>();
   for (const e of expenses) {
     const baseAmount = e.amount * (e.fxRate ?? 1);
-    byCategory.set(e.category.name, (byCategory.get(e.category.name) ?? 0) + baseAmount);
+    const entry = byCategory.get(e.category.name) ?? { amount: 0, byCurrency: new Map<string, number>() };
+    entry.amount += baseAmount;
+    entry.byCurrency.set(e.currencyCode, (entry.byCurrency.get(e.currencyCode) ?? 0) + e.amount);
+    byCategory.set(e.category.name, entry);
   }
 
   // expense totals per investor (tagged), split into charged vs just-tagged
@@ -124,7 +129,13 @@ reportsRouter.get("/summary", async (req, res) => {
     dailyInvestorSplit: dailySplit,
     companyEarnings,
     expensesByCategory: [...byCategory.entries()]
-      .map(([name, amount]) => ({ name, amount: Math.round(amount * 100) / 100 }))
+      .map(([name, v]) => ({
+        name,
+        amount: Math.round(v.amount * 100) / 100,
+        byCurrency: [...v.byCurrency.entries()]
+          .map(([code, amount]) => ({ code, amount: Math.round(amount * 100) / 100 }))
+          .sort((a, b) => b.amount - a.amount),
+      }))
       .sort((a, b) => b.amount - a.amount),
     expensesByInvestor: [...byInvestor.entries()]
       .map(([name, v]) => ({
