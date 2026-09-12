@@ -2,7 +2,7 @@ import { type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { AlertTriangle, ArrowUpRight, Search } from "lucide-react";
 import { useFetch } from "../../useApi";
-import type { ReportSummary, GoldTxn } from "../../types";
+import type { ReportSummary, GoldTxn, Expense } from "../../types";
 import { PageHeader, Dot } from "../../components/AppShell";
 import { Spinner, ErrorNote } from "../../components/ui";
 import { WorldMap } from "../../components/WorldMap";
@@ -306,6 +306,10 @@ export default function Dashboard() {
     activeTeamId ? `/gold?teamId=${activeTeamId}` : null,
     [activeTeamId]
   );
+  const { data: expensesData } = useFetch<{ expenses: Expense[] }>(
+    activeTeamId ? `/expenses?teamId=${activeTeamId}` : null,
+    [activeTeamId]
+  );
 
   if (!activeTeamId) return <ErrorNote>Select a team first.</ErrorNote>;
   if (loading) return <Spinner />;
@@ -326,6 +330,7 @@ export default function Dashboard() {
   const txns = g?.transactions ?? [];
   const recent = [...txns].sort((a, b) => +new Date(b.date) - +new Date(a.date)).slice(0, 6);
   const maxTicket = Math.max(1, ...txns.map((t) => t.totalAmount * (t.fxRate ?? 1)));
+  const expenseCurrencies = [...new Set((expensesData?.expenses ?? []).map((e) => e.currencyCode))].sort();
 
   const cats = [...(s.expensesByCategory ?? [])].sort((a, b) => b.amount - a.amount);
   const maxCat = Math.max(1, ...cats.map((c) => c.amount));
@@ -691,7 +696,22 @@ export default function Dashboard() {
 
         {/* ── expenses ── */}
         <Tile area="exp">
-          <TileHead title="Expenses" right={`${s.counts.expenses} postings`} />
+          <TileHead
+            title="Expenses"
+            right={
+              <span className="inline-flex flex-wrap items-center justify-end gap-1">
+                {s.counts.expenses} postings
+                {expenseCurrencies.map((code) => (
+                  <span
+                    key={code}
+                    className="rounded-full bg-graphite-100 px-1.5 py-0.5 text-[10px] font-medium text-graphite-500"
+                  >
+                    {code}
+                  </span>
+                ))}
+              </span>
+            }
+          />
           <div className="mb-4 flex items-baseline gap-2.5">
             <Kicker>Total</Kicker>
             <span className="font-serif text-[23px] font-semibold -tracking-[0.03em] text-negative sm:text-[29px]">{money(o.totalExpenses)}</span>

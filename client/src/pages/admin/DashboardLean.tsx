@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { AlertTriangle } from "lucide-react";
 import { useFetch } from "../../useApi";
-import type { ReportSummary, TeamOverviewRow } from "../../types";
+import type { ReportSummary, TeamOverviewRow, Expense } from "../../types";
 import { PageHeader, Dot } from "../../components/AppShell";
 import { Spinner, ErrorNote, Stat, Card } from "../../components/ui";
 import { money, grams, num, pct } from "../../format";
@@ -19,6 +19,10 @@ export default function DashboardLean() {
     [activeTeamId]
   );
   const { data: teamRows } = useFetch<TeamOverviewRow[]>("/reports/teams");
+  const { data: expensesData } = useFetch<{ expenses: Expense[] }>(
+    activeTeamId ? `/expenses?teamId=${activeTeamId}` : null,
+    [activeTeamId]
+  );
 
   if (!activeTeamId)
     return (
@@ -43,6 +47,7 @@ export default function DashboardLean() {
   const shareOff = Math.abs(s.totalActiveShare - 100) > 0.01;
   const cats = [...(s.expensesByCategory ?? [])].sort((a, b) => b.amount - a.amount);
   const maxCat = Math.max(1, ...cats.map((c) => c.amount));
+  const expenseCurrencies = [...new Set((expensesData?.expenses ?? []).map((e) => e.currencyCode))].sort();
 
   return (
     <>
@@ -250,7 +255,24 @@ export default function DashboardLean() {
       )}
 
       {cats.length > 0 && (
-        <Card title="Expenses by header" className="mt-4">
+        <Card
+          title="Expenses by header"
+          className="mt-4"
+          action={
+            expenseCurrencies.length > 0 && (
+              <div className="flex flex-wrap items-center justify-end gap-1">
+                {expenseCurrencies.map((code) => (
+                  <span
+                    key={code}
+                    className="rounded-full bg-graphite-100 px-1.5 py-0.5 text-[10px] font-medium text-graphite-500"
+                  >
+                    {code}
+                  </span>
+                ))}
+              </div>
+            )
+          }
+        >
           <div className="space-y-3 p-4">
             {cats.slice(0, 5).map((c) => (
               <div key={c.name}>
