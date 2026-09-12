@@ -2,7 +2,7 @@ import { useMemo, useState, type ReactNode } from "react";
 import { Link, useParams } from "react-router-dom";
 import { Lock, Eye, ArrowLeft } from "lucide-react";
 import { useFetch } from "../../useApi";
-import type { PortalSummary } from "../../types";
+import type { PortalSummary, QualityRow } from "../../types";
 import { PageHeader } from "../../components/AppShell";
 import { Card, ErrorNote, Spinner, Badge, Field, Input, Button, GaugeRing } from "../../components/ui";
 import { money, grams, pct, shortDate } from "../../format";
@@ -169,7 +169,7 @@ export default function PortalDashboard() {
 
       {/* Whole-book context — one compact strip (all losses are visible to every investor) */}
       <Card title="Whole book" className="mt-6">
-        <dl className="grid grid-cols-2 gap-x-4 gap-y-4 p-4 sm:grid-cols-3 sm:gap-x-6 sm:p-5 lg:grid-cols-6">
+        <dl className="grid grid-cols-2 gap-x-4 gap-y-4 p-4 sm:grid-cols-3 sm:gap-x-6 sm:p-5 lg:grid-cols-5">
           <ContextItem
             label="Net profit"
             value={money(o.netProfit)}
@@ -191,8 +191,34 @@ export default function PortalDashboard() {
             value={o.netLoss > 0 ? money(o.netLoss) : "—"}
             tone={o.netLoss > 0 ? "negative" : "default"}
           />
-          <ContextItem label="Stock on hand" value={grams(o.stockLeftGrams)} />
         </dl>
+      </Card>
+
+      {/* Trading activity — what actually moved: bought, sold, and what's left */}
+      <Card title="Trading activity" className="mt-6">
+        <dl className="grid grid-cols-1 gap-5 p-4 sm:grid-cols-3 sm:p-5">
+          <ContextItem
+            label="Purchases"
+            value={grams(o.goldBoughtGrams)}
+            sub={money(o.goldBoughtValue)}
+          />
+          <ContextItem
+            label="Sales"
+            value={grams(o.goldSoldGrams)}
+            sub={money(o.goldSoldValue)}
+          />
+          <ContextItem
+            label="Stock on hand"
+            value={grams(o.stockLeftGrams)}
+            sub={money(o.stockLeftValue)}
+          />
+        </dl>
+        {(o.buyByQuality.length > 0 || o.sellByQuality.length > 0) && (
+          <div className="grid grid-cols-1 gap-4 border-t border-ink-700 p-4 sm:grid-cols-2 sm:p-5">
+            <QualityBreakdown title="Bought by quality" rows={o.buyByQuality} />
+            <QualityBreakdown title="Sold by quality" rows={o.sellByQuality} />
+          </div>
+        )}
       </Card>
 
       {/* Daily statement */}
@@ -352,10 +378,12 @@ function PositionRow({
 function ContextItem({
   label,
   value,
+  sub,
   tone = "default",
 }: {
   label: string;
   value: ReactNode;
+  sub?: ReactNode;
   tone?: "default" | "positive" | "negative";
 }) {
   const toneCls =
@@ -364,6 +392,26 @@ function ContextItem({
     <div>
       <dt className="text-xs font-medium uppercase tracking-wide text-graphite-500">{label}</dt>
       <dd className={`mt-1 text-sm font-semibold ${toneCls}`}>{value}</dd>
+      {sub && <div className="mt-0.5 text-xs text-graphite-500">{sub}</div>}
+    </div>
+  );
+}
+
+function QualityBreakdown({ title, rows }: { title: string; rows: QualityRow[] }) {
+  if (rows.length === 0) return null;
+  return (
+    <div>
+      <div className="mb-2 text-xs font-medium uppercase tracking-wide text-graphite-500">{title}</div>
+      <div className="space-y-1.5">
+        {rows.map((r) => (
+          <div key={r.quality} className="flex items-baseline justify-between gap-3 text-[12.5px]">
+            <span className="min-w-0 font-medium text-graphite-700">{r.quality}</span>
+            <span className="tnum shrink-0 whitespace-nowrap text-graphite-500">
+              {grams(r.grams)} <span className="text-graphite-700">{money(r.value)}</span>
+            </span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
