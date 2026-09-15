@@ -42,12 +42,30 @@ if [ -z "$main_wt" ]; then
     exit 0
 fi
 
+ff_and_verify() {
+    git -C "$main_wt" merge --ff-only origin/main >/dev/null 2>&1 || return 1
+    [ "$(git -C "$main_wt" rev-parse HEAD)" = "$(git rev-parse origin/main)" ]
+}
+
 echo "==> fast-forwarding main worktree at $main_wt"
-if git -C "$main_wt" merge --ff-only origin/main; then
+if ff_and_verify; then
     echo "==> done: origin/main, and the local 'main' worktree, are both current."
 else
-    echo "==> FAST-FORWARD FAILED — the main worktree has local changes that" >&2
-    echo "    conflict with origin/main. It was left as-is; resolve manually" >&2
-    echo "    (git -C \"$main_wt\" status) before trusting it again." >&2
-    exit 1
+    # Observed once (2026-09-15): git merge --ff-only reported "Already up to
+    # date" right after a fetch, yet HEAD had NOT actually advanced — a
+    # transient ref-refresh issue, not a real conflict. One re-fetch + retry
+    # cleared it immediately. Trust the verified SHA comparison, not the
+    # merge command's own message, before ever reporting success.
+    echo "==> mismatch after merge attempt — re-fetching and retrying once"
+    git fetch origin main
+    if ff_and_verify; then
+        echo "==> done (after retry): origin/main, and the local 'main' worktree, are both current."
+    else
+        echo "==> FAST-FORWARD FAILED after retry — the main worktree may have local" >&2
+        echo "    changes that conflict with origin/main, or something else is wrong." >&2
+        echo "    It was left as-is; resolve manually (git -C \"$main_wt\" status) and" >&2
+        echo "    confirm 'git -C \"$main_wt\" rev-parse HEAD' matches 'git rev-parse origin/main'" >&2
+        echo "    before trusting it again." >&2
+        exit 1
+    fi
 fi
