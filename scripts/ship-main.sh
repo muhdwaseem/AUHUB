@@ -9,14 +9,20 @@
 # someone remembers to pull it (it drifted 59 commits/50-behind once already,
 # 2026-09-15). This script is the fix: it IS the push command from now on.
 #
-# Two earlier versions of this script (2026-09-15) both reported false success:
-# a `git fetch` run immediately after the push can race GitHub's own ref
-# propagation, so the freshly-fetched `origin/main` was still the OLD value —
-# and comparing the worktree's HEAD against that stale fetch matched, because
-# both sides were stale together. Fix: verify against the exact SHA this run
-# actually pushed (known locally, no fetch needed to learn it), confirmed via
-# `git ls-remote` (a direct network query, not a local cache) in a retry loop,
-# BEFORE fetching objects or touching the main worktree at all.
+# Three earlier versions of this script (2026-09-15) all reported false
+# success. First: a `git fetch` run immediately after the push can race
+# GitHub's own ref propagation, so the freshly-fetched `origin/main` was still
+# the OLD value, and comparing the worktree's HEAD against that stale fetch
+# matched (both sides stale together). Second: even after confirming the push
+# via `git ls-remote` (a direct network query) and fetching the objects, the
+# `git merge --ff-only` run immediately after, inside the same script, still
+# reported "Already up to date" while HEAD provably had NOT advanced — yet the
+# IDENTICAL command run standalone moments later always worked. That's a
+# timing race in rapid back-to-back git invocations (observed consistently,
+# likely filesystem/ref-cache related on Windows), not a logic error. Fix:
+# retry the merge step itself with a short pause, verifying the actual SHA
+# after every attempt — never trust git's own "up to date"/"fast-forward"
+# message on its own.
 #
 # Usage: run from any worktree of this repo.
 #   bash scripts/ship-main.sh
@@ -72,13 +78,23 @@ echo "==> fetching objects"
 git fetch origin main
 
 echo "==> fast-forwarding main worktree at $main_wt to $pushed_sha"
-git -C "$main_wt" merge --ff-only "$pushed_sha"
-
-actual_sha="$(git -C "$main_wt" rev-parse HEAD)"
-if [ "$actual_sha" = "$pushed_sha" ]; then
-    echo "==> VERIFIED: main worktree HEAD is $actual_sha, matching what was pushed."
-else
-    echo "==> FAST-FORWARD DID NOT LAND — main worktree HEAD is $actual_sha, expected $pushed_sha." >&2
-    echo "    Resolve manually: git -C \"$main_wt\" status" >&2
-    exit 1
-fi
+attempt=1
+max_attempts=5
+while true; do
+    git -C "$main_wt" merge --ff-only "$pushed_sha" || true
+    actual_sha="$(git -C "$main_wt" rev-parse HEAD)"
+    if [ "$actual_sha" = "$pushed_sha" ]; then
+        echo "==> VERIFIED on attempt $attempt: main worktree HEAD is $actual_sha, matching what was pushed."
+        break
+    fi
+    if [ "$attempt" -ge "$max_attempts" ]; then
+        echo "==> FAST-FORWARD DID NOT LAND after $max_attempts attempts — main worktree HEAD is" >&2
+        echo "    $actual_sha, expected $pushed_sha. Resolve manually:" >&2
+        echo "    git -C \"$main_wt\" status" >&2
+        echo "    git -C \"$main_wt\" merge --ff-only $pushed_sha" >&2
+        exit 1
+    fi
+    echo "    attempt $attempt/$max_attempts: HEAD is still $actual_sha — waiting 2s and retrying the merge"
+    sleep 2
+    attempt=$((attempt + 1))
+done
