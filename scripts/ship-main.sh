@@ -1,5 +1,11 @@
 #!/usr/bin/env bash
-# ship-main.sh — push the current branch to origin/main, confirmed.
+# ship-main.sh — DEPRECATED 2026-09-24. Use `scripts/open-pr.sh` instead.
+#
+# This script pushed straight to main with no review step, which is what
+# caused the 2026-09-15 git-drift saga in the first place. main now has
+# branch protection requiring a PR — this script will simply be rejected by
+# GitHub if you try to run it. Kept only for the fast-forward-confirmation
+# logic it pioneered (see open-pr.sh, which reuses the same pattern).
 #
 # This is step 1 of 2. Run `bash scripts/sync-main.sh` (or `git sync-main`)
 # AFTERWARD, AS ITS OWN SEPARATE COMMAND, to fast-forward whichever local

@@ -40,3 +40,6 @@ thisisthecurrent.png
 
 # Vercel CLI local link
 .vercel
+
+# local Claude Code tooling (Impeccable engine binary + hooks, machine-specific)
+.claude/
