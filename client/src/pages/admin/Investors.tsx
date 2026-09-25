@@ -340,9 +340,9 @@ export default function Investors() {
       <button
         onClick={() => navigate(`/admin/view/${inv.id}`)}
         title="View investor portal"
-        className="mr-1 inline-flex h-9 items-center gap-1.5 rounded-full border border-graphite-200 bg-ink-800 px-3 text-[12px] font-semibold text-graphite-700 transition-colors hover:border-gold-lo hover:text-graphite-900"
+        className="mr-1 inline-flex h-9 items-center gap-1.5 rounded-full border border-graphite-200 bg-ink-800 px-2.5 text-[12px] font-semibold text-graphite-700 transition-colors hover:border-gold-lo hover:text-graphite-900 sm:px-3"
       >
-        <Eye size={13} /> View
+        <Eye size={13} /> <span className="hidden sm:inline">View</span>
       </button>
       <IconBtn title="Edit" onClick={() => openEdit(inv)}>
         <Pencil size={15} />
