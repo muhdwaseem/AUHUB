@@ -336,7 +336,7 @@ export default function Investors() {
   );
 
   const rowActions = (inv: Investor) => (
-    <div className="flex flex-wrap justify-end gap-1">
+    <div className="flex flex-wrap justify-end gap-0.5 sm:gap-1">
       <button
         onClick={() => navigate(`/admin/view/${inv.id}`)}
         title="View investor portal"
@@ -844,7 +844,7 @@ function IconBtn({
       title={title}
       aria-label={title}
       onClick={onClick}
-      className={`flex h-11 w-11 items-center justify-center rounded-md transition-colors ${
+      className={`flex h-9 w-9 items-center justify-center rounded-md transition-colors sm:h-11 sm:w-11 ${
         danger
           ? "text-graphite-400 hover:bg-red-500/10 hover:text-negative"
           : "text-graphite-400 hover:bg-graphite-100 hover:text-graphite-700"
