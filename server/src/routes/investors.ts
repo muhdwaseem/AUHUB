@@ -23,6 +23,12 @@ const investorSchema = z.object({
   phone: z.string().optional().or(z.literal("")),
   /** The team this investor belongs to. Required on create. */
   teamId: z.string().trim().min(1).optional(),
+  /** CAPITAL: sharePercentage is derived from capitalInvested and this member
+   *  shares in the automatic pool. GOLD_QUANTITY: excluded from that pool —
+   *  their profit is entered by hand via /profit-entries instead. */
+  trackingMode: z.enum(["CAPITAL", "GOLD_QUANTITY"]).optional(),
+  /** Informational only — never drives a calculation. */
+  goldQuantityGrams: z.coerce.number().min(0).nullable().optional(),
   /** Capital drives the share — the % is derived, never sent by the client. */
   capitalInvested: z.coerce.number().min(0).optional(),
   currencyCode: z.string().trim().toUpperCase().optional(),
@@ -34,6 +40,13 @@ const investorSchema = z.object({
   status: z.enum(["ACTIVE", "INACTIVE"]).optional(),
   /** Second-level profit split. Empty = investor keeps 100% of their share. */
   partners: z.array(partnerSchema).optional(),
+});
+
+const profitEntrySchema = z.object({
+  amount: z.coerce.number().positive("Amount must be greater than 0"),
+  date: z.coerce.date(),
+  quantityGrams: z.coerce.number().positive().optional(),
+  notes: z.string().optional().or(z.literal("")),
 });
 
 /** Returns an error string if the partner list is present but doesn't total 100%. */
@@ -70,14 +83,20 @@ async function recomputeShares(teamId: string) {
   });
   const base = (m: { capitalInvested: number; fxRate: number | null }) =>
     (m.capitalInvested || 0) * (m.fxRate ?? 1);
-  const totalCapital = members.reduce((s, m) => s + base(m), 0);
+  // Gold-quantity members sit outside the capital pool entirely — their share
+  // stays 0 and their profit is tracked by hand via ProfitEntry rows instead.
+  const capitalMembers = members.filter((m) => m.trackingMode !== "GOLD_QUANTITY");
+  const totalCapital = capitalMembers.reduce((s, m) => s + base(m), 0);
+  const lastCapitalId = capitalMembers[capitalMembers.length - 1]?.id;
 
   let allocated = 0;
-  const updates = members.map((m, idx) => {
-    const isLast = idx === members.length - 1;
+  const updates = members.map((m) => {
+    if (m.trackingMode === "GOLD_QUANTITY") {
+      return prisma.investor.update({ where: { id: m.id }, data: { sharePercentage: 0 } });
+    }
     let pct = 0;
     if (totalCapital > 0) {
-      pct = isLast ? round2(100 - allocated) : round2((base(m) / totalCapital) * 100);
+      pct = m.id === lastCapitalId ? round2(100 - allocated) : round2((base(m) / totalCapital) * 100);
     }
     allocated = round2(allocated + pct);
     return prisma.investor.update({
@@ -90,12 +109,23 @@ async function recomputeShares(teamId: string) {
 
 function publicInvestor(inv: any) {
   const teamDefault = inv.team?.companyCutPct ?? 0;
+  const profitEntries = (inv.profitEntries ?? []).map((e: any) => ({
+    id: e.id,
+    amount: e.amount,
+    date: e.date,
+    quantityGrams: e.quantityGrams ?? null,
+    notes: e.notes ?? null,
+    createdAt: e.createdAt,
+  }));
+  const totalRealized = Math.round(profitEntries.reduce((s: number, e: any) => s + e.amount, 0) * 100) / 100;
   return {
     id: inv.id,
     name: inv.name,
     email: inv.email,
     phone: inv.phone,
     teamId: inv.teamId,
+    trackingMode: inv.trackingMode ?? "CAPITAL",
+    goldQuantityGrams: inv.goldQuantityGrams ?? null,
     sharePercentage: inv.sharePercentage, // derived, read-only
     capitalInvested: inv.capitalInvested,
     currencyCode: inv.currencyCode ?? "AED",
@@ -112,6 +142,8 @@ function publicInvestor(inv: any) {
       role: p.role ?? null,
       percentage: p.percentage,
     })),
+    profitEntries,
+    totalRealized,
     loginStatus: inv.user?.status ?? null,
     username: inv.user?.username ?? null,
     // credentials to hand over (present right after create / regenerate)
@@ -124,6 +156,7 @@ const withRelations = {
   user: true,
   team: true,
   partners: { orderBy: { createdAt: "asc" as const } },
+  profitEntries: { orderBy: { date: "desc" as const } },
 };
 
 // List — scoped to a team when ?teamId= is given
@@ -179,6 +212,8 @@ investorsRouter.post("/", async (req, res) => {
       email: d.email || null,
       phone: d.phone || null,
       teamId: d.teamId,
+      trackingMode: d.trackingMode ?? "CAPITAL",
+      goldQuantityGrams: d.goldQuantityGrams ?? null,
       sharePercentage: 0, // set by recomputeShares below
       capitalInvested: d.capitalInvested ?? 0,
       currencyCode: cur.code,
@@ -243,6 +278,8 @@ investorsRouter.put("/:id", async (req, res) => {
       email: d.email === undefined ? undefined : d.email || null,
       phone: d.phone === undefined ? undefined : d.phone || null,
       teamId: d.teamId ?? undefined,
+      trackingMode: d.trackingMode ?? undefined,
+      goldQuantityGrams: d.goldQuantityGrams === undefined ? undefined : d.goldQuantityGrams,
       capitalInvested: d.capitalInvested ?? undefined,
       currencyCode,
       fxRate,
@@ -344,4 +381,42 @@ investorsRouter.delete("/:id", async (req, res) => {
   await prisma.investor.delete({ where: { id: req.params.id } });
   if (inv.teamId) await recomputeShares(inv.teamId);
   res.json({ ok: true });
+});
+
+/** Manually-recorded profit (a CAPITAL member's realized installment, or a
+ *  GOLD_QUANTITY member's whole profit for a portion of their gold) — see the
+ *  ProfitEntry model comment. */
+investorsRouter.post("/:id/profit-entries", async (req, res) => {
+  const parsed = profitEntrySchema.safeParse(req.body);
+  if (!parsed.success)
+    return res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Invalid data" });
+  const inv = await prisma.investor.findUnique({ where: { id: req.params.id } });
+  if (!inv) return res.status(404).json({ error: "Investor not found" });
+  const d = parsed.data;
+  await prisma.profitEntry.create({
+    data: {
+      investorId: inv.id,
+      amount: d.amount,
+      date: d.date,
+      quantityGrams: d.quantityGrams ?? null,
+      notes: d.notes || null,
+    },
+  });
+  const updated = await prisma.investor.findUnique({
+    where: { id: inv.id },
+    include: withRelations,
+  });
+  res.status(201).json(publicInvestor(updated));
+});
+
+investorsRouter.delete("/:id/profit-entries/:entryId", async (req, res) => {
+  const entry = await prisma.profitEntry.findUnique({ where: { id: req.params.entryId } });
+  if (!entry || entry.investorId !== req.params.id)
+    return res.status(404).json({ error: "Profit entry not found" });
+  await prisma.profitEntry.delete({ where: { id: entry.id } });
+  const updated = await prisma.investor.findUnique({
+    where: { id: req.params.id },
+    include: withRelations,
+  });
+  res.json(publicInvestor(updated));
 });

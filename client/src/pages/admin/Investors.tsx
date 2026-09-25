@@ -10,10 +10,11 @@ import {
   ShieldCheck,
   Trash2,
   Check,
+  Wallet,
 } from "lucide-react";
 import { api, apiError } from "../../api";
 import { useFetch } from "../../useApi";
-import type { Investor, ReportSummary } from "../../types";
+import type { Investor, ProfitEntry, ReportSummary } from "../../types";
 import { PageHeader } from "../../components/AppShell";
 import {
   Badge,
@@ -26,7 +27,7 @@ import {
   Spinner,
   Textarea,
 } from "../../components/ui";
-import { pct, shortDate } from "../../format";
+import { pct, shortDate, dateInput } from "../../format";
 import { useCurrency, relTime } from "../../currency";
 import { useTeam } from "../../team";
 
@@ -41,6 +42,8 @@ const blank = {
   name: "",
   email: "",
   phone: "",
+  trackingMode: "CAPITAL" as "CAPITAL" | "GOLD_QUANTITY",
+  goldQuantityGrams: "",
   capitalInvested: "",
   currencyCode: "AED",
   fxRate: "1",
@@ -69,6 +72,7 @@ export default function Investors() {
   const [formErr, setFormErr] = useState("");
   const [busy, setBusy] = useState(false);
   const [credsFor, setCredsFor] = useState<Investor | null>(null);
+  const [entriesFor, setEntriesFor] = useState<Investor | null>(null);
 
   function openAdd() {
     setEditing(null);
@@ -82,6 +86,8 @@ export default function Investors() {
       name: inv.name,
       email: inv.email ?? "",
       phone: inv.phone ?? "",
+      trackingMode: inv.trackingMode ?? "CAPITAL",
+      goldQuantityGrams: inv.goldQuantityGrams === null ? "" : String(inv.goldQuantityGrams),
       capitalInvested: String(inv.capitalInvested),
       currencyCode: inv.currencyCode ?? "AED",
       fxRate: String(inv.fxRate ?? 1),
@@ -109,7 +115,12 @@ export default function Investors() {
     }
     // A blank fx-rate must never silently become "1" — that would record
     // foreign-currency capital as if it were 1:1 with the base currency.
-    if (form.currencyCode !== base.code && !(Number(form.fxRate) > 0)) {
+    // Doesn't apply to gold-quantity members — they have no capital/currency fields.
+    if (
+      form.trackingMode === "CAPITAL" &&
+      form.currencyCode !== base.code &&
+      !(Number(form.fxRate) > 0)
+    ) {
       setFormErr(`Enter the exchange rate (1 ${form.currencyCode} = ? ${base.code}) before saving.`);
       return;
     }
@@ -121,6 +132,11 @@ export default function Investors() {
         email: form.email,
         phone: form.phone,
         teamId: activeTeamId,
+        trackingMode: form.trackingMode,
+        goldQuantityGrams:
+          form.trackingMode === "GOLD_QUANTITY" && form.goldQuantityGrams !== ""
+            ? Number(form.goldQuantityGrams)
+            : null,
         capitalInvested: Number(form.capitalInvested || 0),
         currencyCode: form.currencyCode,
         fxRate: form.currencyCode === base.code ? 1 : Number(form.fxRate),
@@ -239,6 +255,39 @@ export default function Investors() {
     );
   };
 
+  /** Realized-vs-remaining for a CAPITAL member (against their auto-computed
+   *  book share), or the running total for a GOLD_QUANTITY member (whose
+   *  profit is entirely manual — there's no book figure to compare against). */
+  const realizedLine = (inv: Investor) => {
+    if (inv.trackingMode === "GOLD_QUANTITY") {
+      return (
+        <span className="text-[11px] text-graphite-400">
+          Manual profit{" "}
+          <span className="tnum font-medium text-graphite-700">{fmt(inv.totalRealized)}</span>
+          {inv.goldQuantityGrams != null && (
+            <span className="text-graphite-400"> · {inv.goldQuantityGrams}g</span>
+          )}
+        </span>
+      );
+    }
+    if (!report) return null;
+    const book = plById.get(inv.id) ?? 0;
+    const remaining = Math.round((book - inv.totalRealized) * 100) / 100;
+    return (
+      <span className="text-[11px] text-graphite-400">
+        Realized{" "}
+        <span className="tnum font-medium text-graphite-700">{fmt(inv.totalRealized)}</span>
+        {Math.abs(remaining) >= 0.01 && (
+          <span className={`tnum ${remaining > 0 ? "text-warning" : "text-graphite-400"}`}>
+            {" "}
+            ({remaining > 0 ? "" : "−"}
+            {fmt(Math.abs(remaining))} remaining)
+          </span>
+        )}
+      </span>
+    );
+  };
+
   /** Partner breakdown of an investor's share (from the report when available,
    *  otherwise just the configured percentages). */
   const partnersLine = (inv: Investor) => {
@@ -297,6 +346,9 @@ export default function Investors() {
       </button>
       <IconBtn title="Edit" onClick={() => openEdit(inv)}>
         <Pencil size={15} />
+      </IconBtn>
+      <IconBtn title="Profit entries" onClick={() => setEntriesFor(inv)}>
+        <Wallet size={15} />
       </IconBtn>
       <IconBtn title="Regenerate credentials" onClick={() => regenerate(inv)}>
         <KeyRound size={15} />
@@ -375,22 +427,34 @@ export default function Investors() {
                 {loginBadge(inv)}
               </div>
               <div className="mt-2.5 grid grid-cols-2 gap-x-3 gap-y-1 text-[12.5px]">
-                <div>
-                  <span className="text-graphite-400">Share </span>
-                  <b className="tnum font-medium text-accent-text">{pct(inv.sharePercentage)}</b>
-                  {inv.effectiveCompanyCutPct > 0 && (
-                    <div className="text-[10px] text-graphite-400">
-                      co. cut {inv.effectiveCompanyCutPct}%
+                {inv.trackingMode === "GOLD_QUANTITY" ? (
+                  <div className="col-span-2">
+                    <Badge tone="amber">gold qty</Badge>
+                    {inv.goldQuantityGrams != null && (
+                      <span className="ml-1.5 text-graphite-500">{inv.goldQuantityGrams}g</span>
+                    )}
+                  </div>
+                ) : (
+                  <>
+                    <div>
+                      <span className="text-graphite-400">Share </span>
+                      <b className="tnum font-medium text-accent-text">{pct(inv.sharePercentage)}</b>
+                      {inv.effectiveCompanyCutPct > 0 && (
+                        <div className="text-[10px] text-graphite-400">
+                          co. cut {inv.effectiveCompanyCutPct}%
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
-                <div className="text-right">
-                  <span className="text-graphite-400">Capital </span>
-                  <b className="tnum font-medium text-graphite-700">{fmt(inv.capitalInvested, inv.currencyCode)}</b>
-                </div>
-                {report && (
-                  <div className="col-span-2 text-right">{balanceLine(inv)}</div>
+                    <div className="text-right">
+                      <span className="text-graphite-400">Capital </span>
+                      <b className="tnum font-medium text-graphite-700">{fmt(inv.capitalInvested, inv.currencyCode)}</b>
+                    </div>
+                    {report && (
+                      <div className="col-span-2 text-right">{balanceLine(inv)}</div>
+                    )}
+                  </>
                 )}
+                <div className="col-span-2 text-right">{realizedLine(inv)}</div>
                 <div className="col-span-2 truncate text-[11.5px] text-graphite-400">
                   {inv.username} · {inv.email || "—"} · {inv.phone || "—"}
                 </div>
@@ -410,7 +474,7 @@ export default function Investors() {
                 <th className="px-5 py-2.5 font-medium">Investor</th>
                 <th className="px-5 py-2.5 font-medium">Contact</th>
                 <th className="px-5 py-2.5 text-right font-medium">Share</th>
-                <th className="px-5 py-2.5 text-right font-medium">Capital / balance</th>
+                <th className="px-5 py-2.5 text-right font-medium">Capital / profit</th>
                 <th className="px-5 py-2.5 font-medium">Login</th>
                 <th className="px-5 py-2.5 font-medium"></th>
               </tr>
@@ -437,18 +501,33 @@ export default function Investors() {
                     {inv.phone || "—"}
                   </td>
                   <td className="px-5 py-3 text-right">
-                    <div className="tnum font-medium text-accent-text">
-                      {pct(inv.sharePercentage)}
-                    </div>
-                    {inv.effectiveCompanyCutPct > 0 && (
-                      <div className="text-[11px] text-graphite-400">
-                        co. cut {inv.effectiveCompanyCutPct}%
-                      </div>
+                    {inv.trackingMode === "GOLD_QUANTITY" ? (
+                      <Badge tone="amber">gold qty</Badge>
+                    ) : (
+                      <>
+                        <div className="tnum font-medium text-accent-text">
+                          {pct(inv.sharePercentage)}
+                        </div>
+                        {inv.effectiveCompanyCutPct > 0 && (
+                          <div className="text-[11px] text-graphite-400">
+                            co. cut {inv.effectiveCompanyCutPct}%
+                          </div>
+                        )}
+                      </>
                     )}
                   </td>
                   <td className="px-5 py-3 text-right">
-                    <div className="tnum text-graphite-600">{fmt(inv.capitalInvested, inv.currencyCode)}</div>
-                    <div className="mt-0.5">{balanceLine(inv)}</div>
+                    {inv.trackingMode === "GOLD_QUANTITY" ? (
+                      inv.goldQuantityGrams != null && (
+                        <div className="tnum text-graphite-600">{inv.goldQuantityGrams}g</div>
+                      )
+                    ) : (
+                      <>
+                        <div className="tnum text-graphite-600">{fmt(inv.capitalInvested, inv.currencyCode)}</div>
+                        <div className="mt-0.5">{balanceLine(inv)}</div>
+                      </>
+                    )}
+                    <div className="mt-0.5">{realizedLine(inv)}</div>
                     <div className="text-left">{partnersLine(inv)}</div>
                   </td>
                   <td className="px-5 py-3">
@@ -492,79 +571,113 @@ export default function Investors() {
               />
             </Field>
           </div>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <Field
-              label="Capital invested"
-              required
-              hint="Drives this member's profit share % across the team."
+          <Field
+            label="Tracking mode"
+            hint={
+              form.trackingMode === "CAPITAL"
+                ? "Share % is auto-derived from capital below, and profit auto-splits from the book."
+                : "Outside the automatic capital pool — record this member's profit by hand as you settle it (Profit entries, after saving)."
+            }
+          >
+            <select
+              className="w-full rounded-lg border border-ink-600 bg-ink-900 px-3 py-2 text-sm text-graphite-900"
+              value={form.trackingMode}
+              onChange={(e) =>
+                setForm({ ...form, trackingMode: e.target.value as "CAPITAL" | "GOLD_QUANTITY" })
+              }
             >
+              <option value="CAPITAL">Capital (%)</option>
+              <option value="GOLD_QUANTITY">Gold quantity (manual profit)</option>
+            </select>
+          </Field>
+          {form.trackingMode === "GOLD_QUANTITY" && (
+            <Field label="Gold quantity (grams)" hint="Informational only — a record of their stake, not used in any calculation.">
               <Input
                 type="number"
-                step="0.01"
+                step="0.001"
                 min="0"
-                value={form.capitalInvested}
-                onChange={(e) => setForm({ ...form, capitalInvested: e.target.value })}
+                value={form.goldQuantityGrams}
+                onChange={(e) => setForm({ ...form, goldQuantityGrams: e.target.value })}
               />
             </Field>
-            <Field
-              label="Company cut %"
-              hint={`Blank = team default (${teamDefaultCut}%). The company takes this % of the member's profit share before their partner split.`}
-            >
-              <Input
-                type="number"
-                step="0.01"
-                min="0"
-                max="100"
-                placeholder={`${teamDefaultCut} (team default)`}
-                value={form.companyCutPct}
-                onChange={(e) => setForm({ ...form, companyCutPct: e.target.value })}
-              />
-            </Field>
-          </div>
-          {editing && (
-            <p className="rounded-lg bg-graphite-50 px-3 py-2 text-[11.5px] text-graphite-500">
-              Current derived share:{" "}
-              <b className="text-graphite-700">{pct(editing.sharePercentage)}</b> —
-              recalculated from capital across the team when you save.
-            </p>
           )}
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <Field label="Capital currency">
-              <select
-                className="w-full rounded-lg border border-ink-600 bg-ink-900 px-3 py-2 text-sm text-graphite-900"
-                value={form.currencyCode}
-                onChange={(e) =>
-                  setForm({
-                    ...form,
-                    currencyCode: e.target.value,
-                    fxRate: e.target.value === base.code ? "1" : String(byCode(e.target.value).rate),
-                  })
-                }
-              >
-                {currencies.map((c) => (
-                  <option key={c.code} value={c.code}>
-                    {c.code} {c.symbol !== c.code ? `(${c.symbol})` : ""}
-                  </option>
-                ))}
-              </select>
-            </Field>
-            {form.currencyCode !== base.code && (
-              <Field
-                label={`1 ${form.currencyCode} = ? ${base.code}`}
-                hint={`Today's saved rate: ${byCode(form.currencyCode).rate} ${base.code} · updated ${relTime(
-                  byCode(form.currencyCode).rateUpdatedAt
-                )}`}
-              >
-                <Input
-                  type="number"
-                  step="any"
-                  min="0"
-                  value={form.fxRate}
-                  onChange={(e) => setForm({ ...form, fxRate: e.target.value })}
-                />
-              </Field>
-            )}
-          </div>
+          {form.trackingMode === "CAPITAL" && (
+            <>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <Field
+                  label="Capital invested"
+                  required
+                  hint="Drives this member's profit share % across the team."
+                >
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={form.capitalInvested}
+                    onChange={(e) => setForm({ ...form, capitalInvested: e.target.value })}
+                  />
+                </Field>
+                <Field
+                  label="Company cut %"
+                  hint={`Blank = team default (${teamDefaultCut}%). The company takes this % of the member's profit share before their partner split.`}
+                >
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    max="100"
+                    placeholder={`${teamDefaultCut} (team default)`}
+                    value={form.companyCutPct}
+                    onChange={(e) => setForm({ ...form, companyCutPct: e.target.value })}
+                  />
+                </Field>
+              </div>
+              {editing && (
+                <p className="rounded-lg bg-graphite-50 px-3 py-2 text-[11.5px] text-graphite-500">
+                  Current derived share:{" "}
+                  <b className="text-graphite-700">{pct(editing.sharePercentage)}</b> —
+                  recalculated from capital across the team when you save.
+                </p>
+              )}
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <Field label="Capital currency">
+                  <select
+                    className="w-full rounded-lg border border-ink-600 bg-ink-900 px-3 py-2 text-sm text-graphite-900"
+                    value={form.currencyCode}
+                    onChange={(e) =>
+                      setForm({
+                        ...form,
+                        currencyCode: e.target.value,
+                        fxRate: e.target.value === base.code ? "1" : String(byCode(e.target.value).rate),
+                      })
+                    }
+                  >
+                    {currencies.map((c) => (
+                      <option key={c.code} value={c.code}>
+                        {c.code} {c.symbol !== c.code ? `(${c.symbol})` : ""}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+                {form.currencyCode !== base.code && (
+                  <Field
+                    label={`1 ${form.currencyCode} = ? ${base.code}`}
+                    hint={`Today's saved rate: ${byCode(form.currencyCode).rate} ${base.code} · updated ${relTime(
+                      byCode(form.currencyCode).rateUpdatedAt
+                    )}`}
+                  >
+                    <Input
+                      type="number"
+                      step="any"
+                      min="0"
+                      value={form.fxRate}
+                      onChange={(e) => setForm({ ...form, fxRate: e.target.value })}
+                    />
+                  </Field>
+                )}
+              </div>
+            </>
+          )}
           {/* Profit partners — second-level split of this investor's share */}
           <div className="rounded-lg border border-graphite-100 p-3">
             <div className="flex items-center justify-between">
@@ -700,6 +813,17 @@ export default function Investors() {
           reload();
         }}
       />
+
+      {/* Profit entries modal — manual realized/settled amounts */}
+      <ProfitEntriesModal
+        investor={entriesFor}
+        onClose={() => setEntriesFor(null)}
+        onChanged={(updated) => {
+          setEntriesFor(updated);
+          reload();
+        }}
+        fmt={fmt}
+      />
     </>
   );
 }
@@ -817,5 +941,144 @@ function CredRow({
         {copied ? "Copied" : "Copy"}
       </button>
     </div>
+  );
+}
+
+/** Manual profit ledger for one investor — see the server's ProfitEntry
+ *  model comment for the two meanings this can carry. */
+function ProfitEntriesModal({
+  investor,
+  onClose,
+  onChanged,
+  fmt,
+}: {
+  investor: Investor | null;
+  onClose: () => void;
+  onChanged: (updated: Investor) => void;
+  fmt: (amount: number | null | undefined, code?: string | null) => string;
+}) {
+  const [amount, setAmount] = useState("");
+  const [date, setDate] = useState(dateInput());
+  const [quantityGrams, setQuantityGrams] = useState("");
+  const [notes, setNotes] = useState("");
+  const [err, setErr] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  if (!investor) return null;
+
+  async function add(e: FormEvent) {
+    e.preventDefault();
+    if (!(Number(amount) > 0)) {
+      setErr("Enter an amount greater than 0.");
+      return;
+    }
+    setBusy(true);
+    setErr("");
+    try {
+      const r = await api.post(`/investors/${investor!.id}/profit-entries`, {
+        amount: Number(amount),
+        date,
+        quantityGrams: quantityGrams ? Number(quantityGrams) : undefined,
+        notes,
+      });
+      onChanged(r.data);
+      setAmount("");
+      setQuantityGrams("");
+      setNotes("");
+    } catch (err) {
+      setErr(apiError(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function remove(entryId: string) {
+    if (!confirm("Delete this profit entry?")) return;
+    try {
+      const r = await api.delete(`/investors/${investor!.id}/profit-entries/${entryId}`);
+      onChanged(r.data);
+    } catch (err) {
+      alert(apiError(err));
+    }
+  }
+
+  return (
+    <Modal open={!!investor} onClose={onClose} title={`Profit entries — ${investor.name}`}>
+      <p className="text-sm text-graphite-500">
+        {investor.trackingMode === "GOLD_QUANTITY"
+          ? "This member is outside the automatic split — record their profit by hand as you settle it. There's no book figure to compare against; these entries ARE their profit."
+          : "Record what's actually been paid out against this member's auto-computed book share."}
+      </p>
+
+      <div className="mt-3 max-h-64 space-y-2 overflow-y-auto">
+        {investor.profitEntries.length === 0 && (
+          <p className="text-xs text-graphite-400">No entries yet.</p>
+        )}
+        {investor.profitEntries.map((en) => (
+          <div
+            key={en.id}
+            className="flex items-start justify-between gap-2 rounded-lg border border-ink-600 bg-ink-900 px-3 py-2"
+          >
+            <div className="min-w-0">
+              <div className="tnum text-sm font-medium text-graphite-800">{fmt(en.amount)}</div>
+              <div className="text-[11px] text-graphite-400">
+                {shortDate(en.date)}
+                {en.quantityGrams != null && ` · ${en.quantityGrams}g`}
+              </div>
+              {en.notes && <div className="mt-0.5 text-[11px] text-graphite-500">{en.notes}</div>}
+            </div>
+            <button
+              onClick={() => remove(en.id)}
+              aria-label="Delete entry"
+              className="flex h-8 w-8 flex-none items-center justify-center rounded-md text-graphite-400 hover:bg-red-500/10 hover:text-negative"
+            >
+              <Trash2 size={14} />
+            </button>
+          </div>
+        ))}
+      </div>
+
+      <form onSubmit={add} className="mt-4 space-y-3 border-t border-ink-700 pt-4">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <Field label="Amount" required>
+            <Input
+              type="number"
+              step="0.01"
+              min="0"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+            />
+          </Field>
+          <Field label="Date" required>
+            <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+          </Field>
+        </div>
+        <Field label="Quantity (grams, optional)">
+          <Input
+            type="number"
+            step="0.001"
+            min="0"
+            value={quantityGrams}
+            onChange={(e) => setQuantityGrams(e.target.value)}
+          />
+        </Field>
+        <Field label="Notes">
+          <Input
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            placeholder="e.g. 450g of 500g sold @ 140/g"
+          />
+        </Field>
+        {err && <ErrorNote>{err}</ErrorNote>}
+        <div className="flex justify-end gap-2 pt-1">
+          <Button type="button" variant="secondary" onClick={onClose}>
+            Close
+          </Button>
+          <Button type="submit" disabled={busy}>
+            {busy ? "Adding…" : "Add entry"}
+          </Button>
+        </div>
+      </form>
+    </Modal>
   );
 }

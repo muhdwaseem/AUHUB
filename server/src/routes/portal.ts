@@ -95,10 +95,12 @@ portalRouter.get("/summary", async (req, res) => {
     expWhere.date = dateFilter;
   }
 
-  const [txns, expenses] = await Promise.all([
+  const [txns, expenses, profitEntries] = await Promise.all([
     prisma.goldTransaction.findMany({ where: txnWhere, orderBy: { date: "asc" } }),
     prisma.expense.findMany({ where: expWhere, orderBy: { date: "asc" } }),
+    prisma.profitEntry.findMany({ where: { investorId: investor.id }, orderBy: { date: "desc" } }),
   ]);
+  const totalRealized = round2(profitEntries.reduce((s, e) => s + e.amount, 0));
 
   // Convert every amount to the base currency (fxRate) before the engine runs.
   const report = buildReport(
@@ -142,12 +144,27 @@ portalRouter.get("/summary", async (req, res) => {
       joinedAt: investor.joinedAt,
       teamName: investor.team?.name ?? null,
       companyCutPct,
+      trackingMode: investor.trackingMode,
+      goldQuantityGrams: investor.goldQuantityGrams ?? null,
     },
     overall: {
       ...overallView,
       partnerSplit,
       buyByQuality: report.overall.buyByQuality,
       sellByQuality: report.overall.sellByQuality,
+      // Realized/settled tracking (see ProfitEntry): for a CAPITAL member,
+      // remaining = book share still owed; for GOLD_QUANTITY there's no book
+      // figure to reconcile against, so remaining is null and totalRealized
+      // IS their profit.
+      totalRealized,
+      remaining: investor.trackingMode === "GOLD_QUANTITY" ? null : round2(overallView.myNetShare - totalRealized),
+      profitEntries: profitEntries.map((e) => ({
+        id: e.id,
+        amount: e.amount,
+        date: e.date,
+        quantityGrams: e.quantityGrams ?? null,
+        notes: e.notes ?? null,
+      })),
     },
     daily: report.daily.map((d) => investorView(d, investor.id, pct, companyCutPct)),
     generatedAt: report.generatedAt,

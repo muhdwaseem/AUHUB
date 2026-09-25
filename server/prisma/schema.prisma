@@ -107,6 +107,16 @@ model Investor {
   /// the team default.
   companyCutPct Float?
 
+  /// CAPITAL (default): sharePercentage is auto-derived from capitalInvested,
+  /// and profit auto-splits from the pooled book via investorSplit().
+  /// GOLD_QUANTITY: this member's stake is a quantity of gold, not a capital
+  /// figure — excluded from the automatic capital pool (sharePercentage stays
+  /// 0), and their profit is entered by hand as ProfitEntry rows instead.
+  trackingMode      String @default("CAPITAL") // CAPITAL | GOLD_QUANTITY
+  /// Informational only when trackingMode = GOLD_QUANTITY — never fed into
+  /// any automatic calculation, just shown alongside the manual entries below.
+  goldQuantityGrams Float?
+
   status   String   @default("ACTIVE") // ACTIVE | INACTIVE
   notes    String?
   joinedAt DateTime @default(now())
@@ -116,6 +126,7 @@ model Investor {
   user     User?
   expenses Expense[]
   partners ProfitPartner[]
+  profitEntries ProfitEntry[]
 
   @@index([teamId])
 
@@ -137,6 +148,28 @@ model ProfitPartner {
   role       String? // free text: "Capital", "Operator", "Sleeping partner", …
   percentage Float // 0–100, of the investor's net profit share
   createdAt  DateTime @default(now())
+
+  @@index([investorId])
+}
+
+/// A manually-recorded profit amount for one investor. Two uses depending on
+/// the investor's trackingMode:
+///  - CAPITAL: a "realized" installment against their auto-computed book
+///    share — the UI shows book vs. sum(realized) vs. remaining.
+///  - GOLD_QUANTITY: the actual profit for a manually-assessed portion of
+///    their gold (no auto-computed figure to compare against) — the UI shows
+///    the sum of these entries as their total profit outright.
+model ProfitEntry {
+  id            String   @id @default(cuid())
+  investor      Investor @relation(fields: [investorId], references: [id], onDelete: Cascade)
+  investorId    String
+  amount        Float // in the team's base currency
+  date          DateTime
+  /// Optional note: how many grams this entry corresponds to (e.g. "450 of
+  /// their 500g sold"). Never used in a calculation, purely a record.
+  quantityGrams Float?
+  notes         String?
+  createdAt     DateTime @default(now())
 
   @@index([investorId])
 }

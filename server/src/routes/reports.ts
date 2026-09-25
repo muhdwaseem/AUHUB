@@ -41,20 +41,25 @@ async function loadData(teamId?: string, from?: string, to?: string) {
 }
 
 /** Shape the DB investor rows for the accounting engine, resolving each
- *  member's effective company cut % (their override, else their team's default). */
+ *  member's effective company cut % (their override, else their team's default).
+ *  GOLD_QUANTITY members sit outside the automatic capital-% split entirely
+ *  (their sharePercentage is always 0) — excluded here so "Profit distribution"
+ *  doesn't show a spurious $0 row for someone whose profit is tracked by hand. */
 function toInvestorInputs(investors: any[]): InvestorInput[] {
-  return investors.map((i) => ({
-    id: i.id,
-    name: i.name,
-    sharePercentage: i.sharePercentage,
-    status: i.status,
-    companyCutPct: i.companyCutPct ?? i.team?.companyCutPct ?? 0,
-    partners: (i.partners ?? []).map((p: any) => ({
-      name: p.name,
-      role: p.role ?? null,
-      percentage: p.percentage,
-    })),
-  }));
+  return investors
+    .filter((i) => i.trackingMode !== "GOLD_QUANTITY")
+    .map((i) => ({
+      id: i.id,
+      name: i.name,
+      sharePercentage: i.sharePercentage,
+      status: i.status,
+      companyCutPct: i.companyCutPct ?? i.team?.companyCutPct ?? 0,
+      partners: (i.partners ?? []).map((p: any) => ({
+        name: p.name,
+        role: p.role ?? null,
+        percentage: p.percentage,
+      })),
+    }));
 }
 
 function reportFor(txns: any[], expenses: any[]) {

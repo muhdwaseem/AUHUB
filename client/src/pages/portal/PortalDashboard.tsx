@@ -82,67 +82,121 @@ export default function PortalDashboard() {
         </Card>
 
         <div className="flex flex-col items-center gap-5 rounded-xl border border-gold-500/30 bg-gold-500/10 p-5 shadow-[0_6px_16px_-4px_rgba(0,0,0,0.35)] sm:flex-row sm:gap-8 sm:p-6">
-          <GaugeRing
-            value={inv.sharePercentage}
-            size={168}
-            strokeWidth={14}
-            label="My Share"
-          />
+          {inv.trackingMode === "GOLD_QUANTITY" ? (
+            <div className="flex h-[168px] w-[168px] flex-none flex-col items-center justify-center rounded-full border-4 border-gold-500/30">
+              <div className="text-[10px] font-medium uppercase tracking-wide text-accent-text">Gold qty</div>
+              <div className="mt-1 text-xl font-bold text-accent-text">
+                {inv.goldQuantityGrams != null ? `${inv.goldQuantityGrams}g` : "—"}
+              </div>
+            </div>
+          ) : (
+            <GaugeRing
+              value={inv.sharePercentage}
+              size={168}
+              strokeWidth={14}
+              label="My Share"
+            />
+          )}
           <div className="min-w-0 text-center sm:text-left">
             <div className="text-xs font-medium uppercase tracking-wide text-accent-text">
-              My net profit share
+              {inv.trackingMode === "GOLD_QUANTITY" ? "My total profit (manual)" : "My net profit share"}
             </div>
             <div
               className={`mt-1.5 text-2xl font-bold sm:text-3xl ${
-                o.myNetShare >= 0 ? "text-accent-text" : "text-negative"
+                (inv.trackingMode === "GOLD_QUANTITY" ? o.totalRealized : o.myNetShare) >= 0
+                  ? "text-accent-text"
+                  : "text-negative"
               }`}
             >
-              {money(o.myNetShare)}
+              {money(inv.trackingMode === "GOLD_QUANTITY" ? o.totalRealized : o.myNetShare)}
             </div>
             <div className="mt-1 text-xs text-accent-text">
-              {scoped ? "for the selected dates" : "for the whole book to date"}
+              {inv.trackingMode === "GOLD_QUANTITY"
+                ? "entered by the admin as your gold is settled"
+                : scoped
+                  ? "for the selected dates"
+                  : "for the whole book to date"}
             </div>
           </div>
         </div>
       </div>
 
-      {/* How the net share is built */}
-      <Card title="Your position" className="mt-6">
-        <dl className="divide-y divide-ink-700 text-sm">
-          <PositionRow label="My gross profit share" value={money(o.myGrossShare)} />
-          <PositionRow
-            label={`Less shared expenses (${pct(inv.sharePercentage)} of the pool)`}
-            value={`− ${money(o.mySharedExpenseShare)}`}
-            muted
-          />
-          {o.myChargedExpenses > 0 && (
+      {/* How the net share is built — only meaningful for a capital-tracked member */}
+      {inv.trackingMode === "CAPITAL" && (
+        <Card title="Your position" className="mt-6">
+          <dl className="divide-y divide-ink-700 text-sm">
+            <PositionRow label="My gross profit share" value={money(o.myGrossShare)} />
             <PositionRow
-              label="Less expenses charged to you"
-              value={`− ${money(o.myChargedExpenses)}`}
+              label={`Less shared expenses (${pct(inv.sharePercentage)} of the pool)`}
+              value={`− ${money(o.mySharedExpenseShare)}`}
               muted
             />
-          )}
-          {o.myCompanyCut > 0 && (
+            {o.myChargedExpenses > 0 && (
+              <PositionRow
+                label="Less expenses charged to you"
+                value={`− ${money(o.myChargedExpenses)}`}
+                muted
+              />
+            )}
+            {o.myCompanyCut > 0 && (
+              <PositionRow
+                label={`Less company share (${o.companyCutPct}% of your share)`}
+                value={`− ${money(o.myCompanyCut)}`}
+                muted
+              />
+            )}
             <PositionRow
-              label={`Less company share (${o.companyCutPct}% of your share)`}
-              value={`− ${money(o.myCompanyCut)}`}
-              muted
+              label="My net profit share"
+              value={money(o.myNetShare)}
+              strong
+              tone={o.myNetShare >= 0 ? "accent" : "negative"}
             />
-          )}
-          <PositionRow
-            label="My net profit share"
-            value={money(o.myNetShare)}
-            strong
-            tone={o.myNetShare >= 0 ? "accent" : "negative"}
-          />
-          {o.myNetLossShare > 0 && (
-            <PositionRow
-              label="My share of the net loss"
-              value={money(o.myNetLossShare)}
-              tone="negative"
+            {o.myNetLossShare > 0 && (
+              <PositionRow
+                label="My share of the net loss"
+                value={money(o.myNetLossShare)}
+                tone="negative"
+              />
+            )}
+          </dl>
+        </Card>
+      )}
+
+      {/* Realized vs. remaining (CAPITAL), or the manual profit ledger (GOLD_QUANTITY) */}
+      <Card
+        title={inv.trackingMode === "GOLD_QUANTITY" ? "Profit entries" : "Realized vs. remaining"}
+        className="mt-6"
+      >
+        {inv.trackingMode === "CAPITAL" && (
+          <dl className="grid grid-cols-2 gap-4 border-b border-ink-700 p-4 sm:grid-cols-3 sm:p-5">
+            <ContextItem label="Book share" value={money(o.myNetShare)} />
+            <ContextItem label="Realized" value={money(o.totalRealized)} tone="positive" />
+            <ContextItem
+              label="Remaining"
+              value={o.remaining !== null ? money(o.remaining) : "—"}
+              tone={o.remaining !== null && o.remaining > 0 ? "default" : "positive"}
             />
+          </dl>
+        )}
+        <div className="divide-y divide-ink-700">
+          {o.profitEntries.length === 0 && (
+            <p className="px-4 py-8 text-center text-sm text-graphite-400 sm:px-5">
+              No profit entries recorded yet.
+            </p>
           )}
-        </dl>
+          {o.profitEntries.map((en) => (
+            <div key={en.id} className="flex items-baseline justify-between gap-3 px-4 py-3 sm:px-5">
+              <span className="min-w-0 text-graphite-500">
+                {shortDate(en.date)}
+                {en.quantityGrams != null && ` · ${en.quantityGrams}g`}
+                {en.notes && <span className="ml-1.5 text-graphite-400">· {en.notes}</span>}
+              </span>
+              <span className="tnum shrink-0 whitespace-nowrap font-medium text-accent-text">
+                {money(en.amount)}
+              </span>
+            </div>
+          ))}
+        </div>
       </Card>
 
       {/* How the net share is divided between profit partners */}
@@ -341,9 +395,11 @@ export default function PortalDashboard() {
       </Card>
 
       <p className="mt-6 text-xs text-graphite-400">
-        Your net share = (gross profit − shared expenses) × {pct(inv.sharePercentage)} − any
-        expenses charged directly to you. Other investors’ shares are private; all losses are
-        shown to every investor. Generated {shortDate(data.generatedAt)}.
+        {inv.trackingMode === "GOLD_QUANTITY"
+          ? "Your profit is recorded by hand against your gold quantity, not auto-split from the book."
+          : `Your net share = (gross profit − shared expenses) × ${pct(inv.sharePercentage)} − any expenses charged directly to you.`}{" "}
+        Other investors’ shares are private; all losses are shown to every investor. Generated{" "}
+        {shortDate(data.generatedAt)}.
       </p>
     </>
   );

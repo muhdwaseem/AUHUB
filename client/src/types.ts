@@ -95,12 +95,29 @@ export interface ReportSummary {
   counts: { investors: number; transactions: number; expenses: number };
 }
 
+/** A manually-recorded profit amount. For a CAPITAL member it's a realized
+ *  installment against their auto-computed book share; for a GOLD_QUANTITY
+ *  member it's their whole profit for a portion of their gold — see the
+ *  server's ProfitEntry model comment. */
+export interface ProfitEntry {
+  id: string;
+  amount: number;
+  date: string;
+  quantityGrams: number | null;
+  notes: string | null;
+}
+
 export interface Investor {
   id: string;
   name: string;
   email: string | null;
   phone: string | null;
   teamId: string | null;
+  /** CAPITAL (default): auto-split via sharePercentage. GOLD_QUANTITY: outside
+   *  the automatic pool, profit entered by hand via profitEntries instead. */
+  trackingMode: "CAPITAL" | "GOLD_QUANTITY";
+  /** Informational only when trackingMode = GOLD_QUANTITY. */
+  goldQuantityGrams: number | null;
   sharePercentage: number;
   capitalInvested: number;
   currencyCode: string;
@@ -111,6 +128,8 @@ export interface Investor {
   effectiveCompanyCutPct: number;
   teamCompanyCutPct: number;
   partners: ProfitPartner[];
+  profitEntries: ProfitEntry[];
+  totalRealized: number;
   status: "ACTIVE" | "INACTIVE";
   notes: string | null;
   joinedAt: string;
@@ -216,11 +235,18 @@ export interface PortalSummary {
     joinedAt: string;
     teamName: string | null;
     companyCutPct: number;
+    trackingMode: "CAPITAL" | "GOLD_QUANTITY";
+    goldQuantityGrams: number | null;
   };
   overall: PortalPeriod & {
     buyByQuality: QualityRow[];
     sellByQuality: QualityRow[];
     partnerSplit: PartnerShareRow[];
+    totalRealized: number;
+    /** book share minus totalRealized, or null for GOLD_QUANTITY (no book
+     *  figure to reconcile against — totalRealized IS their profit). */
+    remaining: number | null;
+    profitEntries: ProfitEntry[];
   };
   daily: PortalPeriod[];
   generatedAt: string;
